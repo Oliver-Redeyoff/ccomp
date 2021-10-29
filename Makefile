@@ -1,4 +1,4 @@
-OBJS = lex.yy.o C.tab.o symbol_table.o nodes.o main.o
+OBJS = lex.yy.o C.tab.o symbol_table.o nodes.o main.o environment.o
 SRCS = lex.yy.c C.tab.c symbol_table.c nodes.c main.c environment.c
 CC = gcc
 

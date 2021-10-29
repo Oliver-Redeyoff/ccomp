@@ -24,7 +24,7 @@ typedef struct func {
 } FUNC;
 
 typedef struct binding {
-	TOKEN* name;
+	char* name;
 	VALUE* val;
 	struct binding *next;
 } BINDING;
@@ -33,3 +33,7 @@ typedef struct frame {
 	BINDING* bindings;
 	struct frame *next;
 } FRAME;
+
+FRAME* make_frame(FRAME* frames);
+BINDING* make_binding(FRAME* frames, char* name, VALUE* val);
+VALUE* get_value(FRAME* frames, char* name);

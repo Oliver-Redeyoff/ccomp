@@ -5,6 +5,12 @@
 #include "environment.h"
 #include <string.h>
 
+extern int yydebug;
+extern NODE* yyparse(void);
+extern NODE* ans;
+extern void init_symbtable(void);
+FRAME *frames;
+
 char *named(int t) {
     static char b[100];
     if (isgraph(t) || t==' ') {
@@ -86,6 +92,38 @@ void print_tree(NODE *tree) {
     print_tree0(tree, 0);
 }
 
+void declare_variable(NODE *tree) {
+
+  printf("declaring variable\n");
+
+  // get the type, name and it's value
+  TOKEN *variable_type_token = (TOKEN *)tree->left->left;
+  char* variable_type = variable_type_token->lexeme;
+
+  VALUE *variable_value = (VALUE*)malloc(sizeof(VALUE));
+
+  printf("type : ");
+  printf("\"%s\"\n", variable_type);
+
+  if(strcmp(variable_type, "int") == 0){
+      variable_value->type = INTEGER_TYPE;
+      variable_value->v.integer = 0;
+  } else if(strcmp(variable_type, "boolean") == 0) {
+    variable_value->type = BOOLEAN_TYPE;
+    variable_value->v.boolean = TRUE;
+  } else if(strcmp(variable_type, "string") == 0) {
+    variable_value->type = STRING_TYPE;
+    variable_value->v.string = "";
+  } else {
+    printf("variable type is not recognised\n");
+  }
+
+  BINDING *test = make_binding(frames, "test", variable_value);
+
+  printf("name : ");
+  printf("\"%s\"\n", test->name);
+}
+
 void declare_function(NODE *function_node) {
 
   printf("declaring function\n");
@@ -107,18 +145,15 @@ void declare_function(NODE *function_node) {
     exit(1);
   }
 
-  f->type = FUNCTION_TYPE;
-  f->v.function->name = "testing";
-
 }
 
 void interprete(NODE *tree) {
   int node_type = tree->type;
 
   switch (node_type) {
+
     case '~':
-      // this is for a variable or method declaration
-      printf("%s\n", named(tree->left->type));
+      declare_variable(tree);
       break;
 
     case 'D':
@@ -128,19 +163,17 @@ void interprete(NODE *tree) {
     default:
       printf("Token is not recognised by interpreter");
       break;
+
   }
 
 }
 
-extern int yydebug;
-extern NODE* yyparse(void);
-extern NODE* ans;
-extern void init_symbtable(void);
-
-extern FRAME* environment;
-
 int main(int argc, char** argv) {
+    
     NODE* tree;
+    frames = (FRAME*)malloc(sizeof(FRAME));
+    make_frame(frames);
+
     if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
     init_symbtable();
     printf("--C COMPILER\n");
