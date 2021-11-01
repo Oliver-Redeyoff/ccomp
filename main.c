@@ -100,6 +100,8 @@ void declare_variable(NODE *tree) {
   TOKEN *variable_type_token = (TOKEN *)tree->left->left;
   char* variable_type = variable_type_token->lexeme;
 
+  // need to get the value from the right expression
+
   VALUE *variable_value = (VALUE*)malloc(sizeof(VALUE));
 
   printf("type : ");
@@ -108,12 +110,6 @@ void declare_variable(NODE *tree) {
   if(strcmp(variable_type, "int") == 0){
       variable_value->type = INTEGER_TYPE;
       variable_value->v.integer = 0;
-  } else if(strcmp(variable_type, "boolean") == 0) {
-    variable_value->type = BOOLEAN_TYPE;
-    variable_value->v.boolean = TRUE;
-  } else if(strcmp(variable_type, "string") == 0) {
-    variable_value->type = STRING_TYPE;
-    variable_value->v.string = "";
   } else {
     printf("variable type is not recognised\n");
   }

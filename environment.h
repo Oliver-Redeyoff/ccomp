@@ -2,17 +2,13 @@
 
 enum valueType {
   INTEGER_TYPE = 1,
-  BOOLEAN_TYPE = 2,
-  STRING_TYPE = 3,
-  FUNCTION_TYPE = 4
+  FUNCTION_TYPE = 2
 };
 
 typedef struct value {
   int          type;
   union {
     int integer;
-    int boolean; // will need this soon
-    char* string;
     struct func *function;
   } v;
 } VALUE;
