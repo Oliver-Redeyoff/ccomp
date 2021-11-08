@@ -9,8 +9,10 @@ extern int yydebug;
 extern NODE* yyparse(void);
 extern NODE* ans;
 extern void init_symbtable(void);
-FRAME *frames;
 
+/////////////////////////
+// Visualisation stuff //
+/////////////////////////
 char *named(int t) {
     static char b[100];
     if (isgraph(t) || t==' ') {
@@ -92,35 +94,63 @@ void print_tree(NODE *tree) {
     print_tree0(tree, 0);
 }
 
-void declare_variable(NODE *tree) {
+
+////////////////////////
+// Interpreting logic //
+////////////////////////
+int evaluate_expression(NODE* node, FRAME* current_frame) {
+  int node_type = node->type;
+
+  switch (node_type) {
+    case LEAF:
+      // TOKEN* node_token = (TOKEN*)node->left;
+      // if (node_token->type == CONSTANT) {
+      //   return node_token->value;
+      // }
+      break;
+
+    default:
+      break;
+  }
+
+  return 1;
+
+}
+
+void declare_variable(NODE* tree, FRAME* current_frame) {
 
   printf("declaring variable\n");
 
   // get the type, name and it's value
-  TOKEN *variable_type_token = (TOKEN *)tree->left->left;
+  TOKEN* variable_type_token = (TOKEN*)tree->left->left;
   char* variable_type = variable_type_token->lexeme;
 
-  // need to get the value from the right expression
-
-  VALUE *variable_value = (VALUE*)malloc(sizeof(VALUE));
-
-  printf("type : ");
-  printf("\"%s\"\n", variable_type);
+  VALUE* variable_value = (VALUE*)malloc(sizeof(VALUE));
+  TOKEN* variable_name_token = NULL;
 
   if(strcmp(variable_type, "int") == 0){
+
       variable_value->type = INTEGER_TYPE;
-      variable_value->v.integer = 0;
+
+      // look at right to see if it is just declaration or also assignement;
+      if (tree->right->type == LEAF) {
+        variable_value->v.integer = 0;
+        variable_name_token = (TOKEN*)tree->right->right;
+      } else {
+        variable_value->v.integer = evaluate_expression(tree->right, current_frame);
+      }
+
   } else {
     printf("variable type is not recognised\n");
   }
 
-  BINDING *test = make_binding(frames, "test", variable_value);
+  BINDING* test = add_binding(current_frame, variable_name_token, variable_value);
 
-  printf("name : ");
-  printf("\"%s\"\n", test->name);
+  // printf("name : ");
+  // printf("\"%s\"\n", test->name);
 }
 
-void declare_function(NODE *function_node) {
+void declare_function(NODE *function_node, FRAME* current_frame) {
 
   printf("declaring function\n");
 
@@ -143,32 +173,33 @@ void declare_function(NODE *function_node) {
 
 }
 
-void interprete(NODE *tree) {
+void interprete(NODE *tree, FRAME* current_frame) {
   int node_type = tree->type;
 
   switch (node_type) {
-
     case '~':
-      declare_variable(tree);
+      declare_variable(tree, current_frame);
       break;
 
     case 'D':
-      declare_function(tree);
+      declare_function(tree, current_frame);
       break;
       
     default:
       printf("Token is not recognised by interpreter");
       break;
-
   }
-
 }
 
+
+
+//////////
+// Main //
+//////////
 int main(int argc, char** argv) {
     
     NODE* tree;
-    frames = (FRAME*)malloc(sizeof(FRAME));
-    make_frame(frames);
+    FRAME* current_frame = (FRAME*)malloc(sizeof(FRAME));
 
     if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
     init_symbtable();
@@ -181,7 +212,7 @@ int main(int argc, char** argv) {
     print_tree(tree);
     
     // Interprete result of the program from AST
-    interprete(tree);
+    interprete(tree, current_frame);
     
     return 0;
 }

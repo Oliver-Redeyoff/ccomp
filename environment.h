@@ -13,14 +13,8 @@ typedef struct value {
   } v;
 } VALUE;
 
-typedef struct func {
-  int returnType;
-  char* name;
-  VALUE* params;
-} FUNC;
-
 typedef struct binding {
-	char* name;
+	TOKEN* name_token;
 	VALUE* val;
 	struct binding *next;
 } BINDING;
@@ -30,6 +24,19 @@ typedef struct frame {
 	struct frame *next;
 } FRAME;
 
-FRAME* make_frame(FRAME* frames);
-BINDING* make_binding(FRAME* frames, char* name, VALUE* val);
-VALUE* get_value(FRAME* frames, char* name);
+typedef struct closure {
+  FRAME* frame;
+  NODE* code;
+} CLOSURE;
+
+typedef struct func {
+  int returnType;
+  TOKEN* token;
+  VALUE* params;
+  CLOSURE* closure;
+} FUNC;
+
+FRAME* make_frame(FRAME* frame);
+BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val);
+
+VALUE* get_value(FRAME* frame, TOKEN* token);

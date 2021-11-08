@@ -1,7 +1,7 @@
 cd ..
 make
 ./mycc <<CODE
-int x = 1;
+int x;
 CODE
 
 #int main(void) {
