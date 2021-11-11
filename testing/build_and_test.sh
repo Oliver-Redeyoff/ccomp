@@ -1,8 +1,13 @@
 cd ..
 make
 ./mycc <<CODE
+int test(int a, int b) {
+    return a+b;
+}
+
 int main(void) {
     int x, y=3;
+    test(2, 3);
     return 1;
 }
 CODE

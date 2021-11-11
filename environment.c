@@ -5,7 +5,7 @@
 FRAME* extend_frame(FRAME* frame) {
     FRAME* new_frame = (FRAME*)malloc(sizeof(FRAME));
     if (new_frame==NULL) {
-      perror("Cannot make frame");
+      printf("Cannot make frame");
       exit(1);
     }
 
@@ -43,14 +43,14 @@ BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val) {
 }
 
 VALUE* get_value(TOKEN* search_name_token, int search_type, FRAME* frame) {
+    BINDING* current_binding = frame->bindings;
     while (TRUE) {
-        BINDING* current_binding = frame->bindings;
         if (current_binding->name_token == search_name_token && current_binding->val->type == search_type) {
             return current_binding->val;
         } else {
             if (current_binding->next == NULL) {
-                printf("No such binding exists");
-                return NULL;
+                printf("No such binding exists\n");
+                exit(1);
             } else {
                 current_binding = current_binding->next;
             }

@@ -12,9 +12,12 @@ extern void init_symbtable(void);
 
 void declare_function(NODE* function_node, FRAME* current_frame);
 void call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame);
-void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node);
-void declare_variable_rec(NODE* current_node, FRAME* current_frame);
-void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* current_frame)
+
+void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* current_frame);
+void declare_variables(NODE* current_node, FRAME* current_frame);
+void declare_variables_inner(NODE* current_node, TOKEN* type_token, FRAME* current_frame);
+void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* current_frame);
+
 VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame);
 VALUE* interpret(NODE* current_node, FRAME* current_frame);
 
@@ -134,6 +137,7 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
 
 void call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame) {
 
+  printf("Setting up function %s\n", function_name_token->lexeme);
   // find the closure for the function
   VALUE* clos_value = get_value(function_name_token, CLOSURE_TYPE, current_frame);
   CLOSURE* clo = clos_value->v.closure;
@@ -141,28 +145,32 @@ void call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME
   // first need to extend current frame with function's frame
   current_frame = extend_frame(current_frame);
 
-  // now populate it with function arguments
-  NODE* current_arg_declaration_node = clo->declaration->left->right->right;
-  NODE* current_arg_value_node = argument_values_node;
-  
-  declare_function_arguments_rec(current_arg_declaration_node, current_arg_value_node);
+  if (argument_values_node != NULL) {
+    // now populate it with function arguments
+    NODE* current_arg_declaration_node = clo->declaration->left->right->right;
+    NODE* current_arg_value_node = argument_values_node;
+    
+    declare_function_arguments_rec(current_arg_declaration_node, current_arg_value_node, current_frame);
+  }
 
   // then interprete body of function
-
+  printf("Interpreting function %s\n", function_name_token->lexeme);
+  interpret(clo->declaration->right, current_frame);
 }
 
 
 
-void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node) {
+void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* current_frame) {
 
   if (current_arg_declaration_node->type == ',') {
-    declare_function_arguments_rec(current_arg_declaration_node->left, current_arg_value_node->left);
-    declare_function_arguments_rec(current_arg_declaration_node->right, current_arg_value_node->right);
+    declare_function_arguments_rec(current_arg_declaration_node->left, current_arg_value_node->left, current_frame);
+    declare_function_arguments_rec(current_arg_declaration_node->right, current_arg_value_node->right, current_frame);
   } else {
     if (current_arg_declaration_node->type == '~') {
-
+      declare_variable((TOKEN*)current_arg_declaration_node->left, (TOKEN*)current_arg_declaration_node->right, current_arg_value_node, current_frame);
     } else {
-      printf("ERROR: arguments do not match up with function declaration");
+      printf("ERROR: arguments do not match up with function declaration\n");
+      exit(1);
     }
   }
 
@@ -170,24 +178,24 @@ void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* cu
 
 void declare_variables(NODE* current_node, FRAME* current_frame) {
   // need to somehow use the type and inforce it
-  declare_variable_rec(current_node->right, current_frame);
+  TOKEN* type_token = (TOKEN*)current_node->left;
+
+  declare_variables_inner(current_node->right, type_token, current_frame);
 }
 
-void declare_variable_rec(NODE* current_node, FRAME* current_frame) {
+void declare_variables_inner(NODE* current_node, TOKEN* type_token, FRAME* current_frame) {
 
   if (current_node->type == ',') {
-    declare_variable_rec(current_node->left, current_frame);
-    declare_variable_rec(current_node->right, current_frame);
-  } else {
-
+    declare_variables_inner(current_node->left, type_token, current_frame);
+    declare_variables_inner(current_node->right, type_token, current_frame);
+  } 
+  else if (current_node->type == '=') {
+    TOKEN* name_token = (TOKEN*)current_node->left->left;
+    declare_variable(type_token, name_token, current_node->right, current_frame);
   }
-
-  // get the type token and string
-  TOKEN* variable_type_token = (TOKEN*)current_node->left->left;
-  TOKEN* variable_name_token = (TOKEN*)malloc(sizeof(TOKEN));
-
-  if (current_node->right->type == LEAF) {
-        variable_name_token = (TOKEN*)current_node->right->right;
+  else if(current_node->type == LEAF) {
+    TOKEN* name_token = (TOKEN*)current_node->left;
+    declare_variable(type_token, name_token, NULL, current_frame);
   }
 
 }
@@ -201,8 +209,10 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
   if (value_node == NULL) {
     variable_value->v.integer = 0;
   } else {
-    variable_value = interpret(value_node, current_frame);
+    variable_value = evaluate_expression(value_node, current_frame);
   }
+
+  printf("Declaring variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
 
   BINDING* test = add_binding(current_frame, name_token, variable_value);
 } 
@@ -210,7 +220,10 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
 
 
 VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame) {
-  return NULL;
+  VALUE* variable_value = (VALUE*)malloc(sizeof(VALUE));
+  variable_value->v.integer = 0;
+
+  return variable_value;
 }
 
 VALUE* interpret(NODE* current_node, FRAME* current_frame) {
@@ -230,12 +243,19 @@ VALUE* interpret(NODE* current_node, FRAME* current_frame) {
       declare_function(current_node, current_frame);
       break;
 
-    case LEAF:
-      // should return lexeme as value struct
-      return NULL;
+    case ';':
+      interpret(current_node->left, current_frame);
+      interpret(current_node->right, current_frame);
+      break;
+
+    case APPLY:
+      call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
       
+    case RETURN:
+      return NULL;
+
     default:
-      printf("Token is not recognised by interpreter\n");
+      printf("Token type %d is not recognised by interpreter\n", node_type);
       break;
   }
 
@@ -264,25 +284,25 @@ int main(int argc, char** argv) {
     // Interprete result of the program from AST
     interpret(tree, root_frame);
 
-    printf("finished constructing root scope");
-
     // Look through all bindings in the root frame, and call main function
-    //BINDING* current_binding = root_frame->bindings;
-    // while (TRUE) {
+    BINDING* current_binding = root_frame->bindings;
+    while (TRUE) {
 
-    //   if (strcmp(current_binding->name_token->lexeme, "main")){
-    //     call_function(current_binding->name_token, NULL, root_frame);
-    //     break;
-    //   } else {
-    //     if (current_binding->next == NULL) {
-    //       printf("no main function is defined");
-    //       break;
-    //     } else {
-    //       current_binding = current_binding->next;
-    //     }
-    //   }
+      printf("lexeme: %s\n", current_binding->name_token->lexeme);
 
-    // }
+      if (strcmp(current_binding->name_token->lexeme, "main") == 0){
+        call_function(current_binding->name_token, NULL, root_frame);
+        break;
+      } else {
+        if (current_binding->next == NULL) {
+          printf("no main function is defined\n");
+          break;
+        } else {
+          current_binding = current_binding->next;
+        }
+      }
+
+    }
     
     return 0;
 }
