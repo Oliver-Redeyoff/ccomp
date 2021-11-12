@@ -18,7 +18,7 @@ void declare_variables(NODE* current_node, FRAME* current_frame);
 void declare_variables_inner(NODE* current_node, TOKEN* type_token, FRAME* current_frame);
 void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* current_frame);
 
-VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame);
+VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame);
 VALUE* interpret(NODE* current_node, FRAME* current_frame);
 
 
@@ -78,7 +78,7 @@ void print_leaf(NODE* tree, int level) {
     TOKEN* t = (TOKEN*)tree;
     int i;
     for (i=0; i<level; i++) putchar(' ');
-    if (t->type == CONSTANT) printf("leaf: %d\n", t->value);
+    if (t->type == CONSTANT) printf("leaf_value: %d\n", t->value);
     else if (t->type == STRING_LITERAL) printf("leaf: \"%s\"\n", t->lexeme);
     else if (t) puts(t->lexeme);
 }
@@ -209,7 +209,7 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
   if (value_node == NULL) {
     variable_value->v.integer = 0;
   } else {
-    variable_value = evaluate_expression(value_node, current_frame);
+    variable_value = evaluate_expression(value_node, INTEGER_TYPE, current_frame);
   }
 
   printf("Declaring variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
@@ -219,11 +219,73 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
 
 
 
-VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame) {
-  VALUE* variable_value = (VALUE*)malloc(sizeof(VALUE));
-  variable_value->v.integer = 0;
+VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame) {
+  int node_type = current_node->type;
+  VALUE* res = (VALUE*)malloc(sizeof(VALUE));
+  res->type = result_type;
 
-  return variable_value;
+  if (node_type == LEAF) {
+    TOKEN* value_token = (TOKEN*)current_node->left;
+    res->type = result_type;
+    res->v.integer = value_token->value;
+    return res;
+  }
+
+  VALUE* left_res = evaluate_expression(current_node->left, result_type, current_frame);
+  VALUE* right_res = evaluate_expression(current_node->right, result_type, current_frame);
+
+  switch (node_type) {
+    case '+':
+      res->v.integer = left_res->v.integer + right_res->v.integer;
+      break;
+
+    case '-':
+      res->v.integer = left_res->v.integer - right_res->v.integer;
+      break;
+
+    case '*':
+      res->v.integer = left_res->v.integer * right_res->v.integer;
+      break;
+
+    case '/':
+      res->v.integer = left_res->v.integer / right_res->v.integer;
+      break;
+
+    case '%':
+      res->v.integer = left_res->v.integer % right_res->v.integer;
+      break;
+
+    case EQ_OP:
+      res->v.integer = left_res->v.integer == right_res->v.integer;
+      break;
+
+    case NE_OP:
+      res->v.integer = left_res->v.integer != right_res->v.integer;
+      break;
+
+    case '>':
+      res->v.integer = left_res->v.integer > right_res->v.integer;
+      break;
+
+    case GE_OP:
+      res->v.integer = left_res->v.integer >= right_res->v.integer;
+      break;
+
+    case '<':
+      res->v.integer = left_res->v.integer < right_res->v.integer;
+      break;
+
+    case LE_OP:
+      res->v.integer = left_res->v.integer <= right_res->v.integer;
+      break;
+    
+    default:
+      printf("ERROR: operator is not recognised\n");
+      exit(0);
+      break;
+  }
+
+  return res;
 }
 
 VALUE* interpret(NODE* current_node, FRAME* current_frame) {
@@ -252,7 +314,7 @@ VALUE* interpret(NODE* current_node, FRAME* current_frame) {
       call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
       
     case RETURN:
-      return NULL;
+      return evaluate_expression(current_node->left);
 
     default:
       printf("Token type %d is not recognised by interpreter\n", node_type);
@@ -278,25 +340,24 @@ int main(int argc, char** argv) {
     // Parse inputed program into AST
     yyparse();
     tree = ans;
-    printf("parse finished with %p\n", tree);
+    printf("Parse finished with %p\n", tree);
     print_tree(tree);
     
     // Interprete result of the program from AST
+    printf("Setting up root scope\n");
     interpret(tree, root_frame);
 
     // Look through all bindings in the root frame, and call main function
     BINDING* current_binding = root_frame->bindings;
     while (TRUE) {
 
-      printf("lexeme: %s\n", current_binding->name_token->lexeme);
-
       if (strcmp(current_binding->name_token->lexeme, "main") == 0){
         call_function(current_binding->name_token, NULL, root_frame);
         break;
       } else {
         if (current_binding->next == NULL) {
-          printf("no main function is defined\n");
-          break;
+          printf("ERROR: no main function is defined in root scope\n");
+          exit(0);
         } else {
           current_binding = current_binding->next;
         }
