@@ -39,6 +39,7 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
 
 VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame);
 VALUE* interpret(NODE* current_node, FRAME* current_frame);
+void call_main(FRAME* root_frame);
 
 FRAME* extend_frame(FRAME* frame);
 BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val);

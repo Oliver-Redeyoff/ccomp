@@ -7,14 +7,15 @@
 
 
 
+// Creates a new closure in given frame
 void declare_function(NODE* function_node, FRAME* current_frame) {
 
-  printf("declaring function\n");
+  //printf("declaring function\n");
 
   VALUE* clos_value = (VALUE*)malloc(sizeof(VALUE));
   CLOSURE* clos = (CLOSURE*)malloc(sizeof(CLOSURE));
   if (clos_value==NULL || clos==NULL) {
-    perror("Cannot define function");
+    printf("Cannot define function\n");
     exit(1);
   }
 
@@ -32,9 +33,11 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
 
 }
 
+// Creates new frame for function, initialises arguments and then interpretes the body
 void call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame) {
 
-  printf("Setting up function %s\n", function_name_token->lexeme);
+  //printf("Setting up function %s\n", function_name_token->lexeme);
+
   // find the closure for the function
   VALUE* clos_value = get_value(function_name_token, CLOSURE_TYPE, current_frame);
   CLOSURE* clo = clos_value->v.closure;
@@ -51,12 +54,13 @@ void call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME
   }
 
   // then interprete body of function
-  printf("Interpreting function %s\n", function_name_token->lexeme);
+  //printf("Interpreting function %s\n", function_name_token->lexeme);
   interpret(clo->declaration->right, current_frame);
 }
 
 
 
+// Initialises function arguments recursively when it is called
 void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* current_frame) {
 
   if (current_arg_declaration_node->type == ',') {
@@ -73,6 +77,7 @@ void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* cu
 
 }
 
+// Entry point for declaring list of variables
 void declare_variables(NODE* current_node, FRAME* current_frame) {
   // need to somehow use the type and inforce it
   TOKEN* type_token = (TOKEN*)current_node->left;
@@ -80,6 +85,7 @@ void declare_variables(NODE* current_node, FRAME* current_frame) {
   declare_variables_inner(current_node->right, type_token, current_frame);
 }
 
+// Declare a list of variables recusively
 void declare_variables_inner(NODE* current_node, TOKEN* type_token, FRAME* current_frame) {
 
   if (current_node->type == ',') {
@@ -97,6 +103,7 @@ void declare_variables_inner(NODE* current_node, TOKEN* type_token, FRAME* curre
 
 }
 
+// Backend for declaring variable
 void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* current_frame) {
 
   // create an empty value struct where we will store the value
@@ -109,13 +116,14 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
     variable_value = evaluate_expression(value_node, INTEGER_TYPE, current_frame);
   }
 
-  printf("Declaring variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
+  //printf("Declaring variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
 
   BINDING* test = add_binding(current_frame, name_token, variable_value);
 } 
 
 
 
+// Evaluates an expression and returns the value, can probably merge this into interpret though
 VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame) {
   int node_type = current_node->type;
   VALUE* res = (VALUE*)malloc(sizeof(VALUE));
@@ -185,6 +193,7 @@ VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_f
   return res;
 }
 
+// Recursively interpret starting at a given node
 VALUE* interpret(NODE* current_node, FRAME* current_frame) {
   int node_type = current_node->type;
 
@@ -221,6 +230,25 @@ VALUE* interpret(NODE* current_node, FRAME* current_frame) {
   return NULL;
 }
 
+// Finds main method and calls it
+void call_main(FRAME* root_frame) {
+    BINDING* current_binding = root_frame->bindings;
+    while (TRUE) {
+
+      if (strcmp(current_binding->name_token->lexeme, "main") == 0){
+        call_function(current_binding->name_token, NULL, root_frame);
+        break;
+      } else {
+        if (current_binding->next == NULL) {
+          printf("ERROR: no main function is defined in root scope\n");
+          exit(0);
+        } else {
+          current_binding = current_binding->next;
+        }
+      }
+
+    }
+}
 
 
 // Add a new frame which extends a existing frame

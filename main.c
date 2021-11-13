@@ -111,34 +111,16 @@ int main(int argc, char** argv) {
 
     if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
     init_symbtable();
-    printf("--C COMPILER\n");
+    //printf("--C COMPILER\n");
     
     // Parse inputed program into AST
     yyparse();
     tree = ans;
-    printf("Parse finished with %p\n", tree);
-    print_tree(tree);
+    //print_tree(tree);
     
     // Interprete result of the program from AST
     interpret(tree, root_frame);
+    call_main(root_frame);
 
-    // Look through all bindings in the root frame, and call main function
-    BINDING* current_binding = root_frame->bindings;
-    while (TRUE) {
-
-      if (strcmp(current_binding->name_token->lexeme, "main") == 0){
-        call_function(current_binding->name_token, NULL, root_frame);
-        break;
-      } else {
-        if (current_binding->next == NULL) {
-          printf("ERROR: no main function is defined in root scope\n");
-          exit(0);
-        } else {
-          current_binding = current_binding->next;
-        }
-      }
-
-    }
-    
     return 0;
 }
