@@ -5,6 +5,15 @@
 #include "C.tab.h"
 #include "tac_generator.h"
 
+/*
+*
+* Should recurse over tree, 
+*
+*
+*
+*
+*/
+
 BASIC_BLOCK* generate_TAC(NODE* tree) {
     return NULL;
 }

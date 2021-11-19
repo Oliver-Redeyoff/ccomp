@@ -1,5 +1,11 @@
 #include "nodes.h"
 
+enum TAC_TYPE {
+    CALL = 1,
+    LABEL = 2,
+    INSTRUCTION = 3
+};
+
 typedef struct call {
     TOKEN* name; 
     int arity;

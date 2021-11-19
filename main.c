@@ -122,5 +122,8 @@ int main(int argc, char** argv) {
     interpret(tree, root_frame);
     call_main(root_frame);
 
+    // generate tac
+    BASIC_BLOCK* tac = generate_TAC(tree);
+
     return 0;
 }
