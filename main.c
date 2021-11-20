@@ -107,7 +107,6 @@ void print_tree(NODE* tree) {
 int main(int argc, char** argv) {
     
     NODE* tree;
-    FRAME* root_frame = (FRAME*)malloc(sizeof(FRAME));
 
     if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
     init_symbtable();
@@ -116,13 +115,12 @@ int main(int argc, char** argv) {
     // Parse inputed program into AST
     yyparse();
     tree = ans;
-    //print_tree(tree);
+    print_tree(tree);
     
     // Interprete result of the program from AST
-    interpret(tree, root_frame);
-    call_main(root_frame);
+    VALUE* result = interpret(tree);
 
-    // generate tac
+    // Generate tac from AST
     BASIC_BLOCK* tac = generate_TAC(tree);
 
     return 0;

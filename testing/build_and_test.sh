@@ -1,26 +1,27 @@
 #!/usr/local/bin/zsh
 
-index=1
-for entry in "test_cases"/"test"?".in"
-do
-    text=$(cat "test_cases"/"test${index}.in")
+cd ..
 
-    out=$(../mycc <<< $text)
-    echo $out
+make
 
-    index=$(($index + 1))
-done
+function run_test {
+    text=$(cat "testing"/"test_cases"/"${1}.in")
 
-# cd ..
-# make
-# ./mycc <<CODE
-# int test(int x, int y) {
-#     return x+y;
-# }
+    ./mycc <<< $text
 
-# int main(void) {
-#     void o = "test";
-#     int x = 2;
-#     return 1;
-# }
-# CODE
+    # out=$(./mycc <<< $text)
+    # echo $out
+}
+
+run_test test1;
+
+# index=1
+# for entry in "testing"/"test_cases"/"test"?".in"
+# do
+#     text=$(cat "testing"/"test_cases"/"test${index}.in")
+
+#     out=$(./mycc <<< $text)
+#     echo $out
+
+#     index=$(($index + 1))
+# done

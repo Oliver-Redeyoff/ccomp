@@ -1,4 +1,13 @@
 int main(void) {
     int x = 2;
+    while(x <= 5) {
+        x = x + 1;
+        if (x == 4) {
+            return 3;
+        } else {
+            break;
+        }
+    }
+    x = x + 1;
     return 1;
 }
