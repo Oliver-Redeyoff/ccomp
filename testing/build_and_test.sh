@@ -9,4 +9,4 @@ function run_test {
     ./mycc <<< $text
 }
 
-run_test test1;
+run_test 0testing;

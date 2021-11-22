@@ -1,0 +1,9 @@
+function cplus(int a) {
+    int cplusa(int b) { return a+b; }
+    return cplusa;
+}
+
+int main(void) {
+    function f = cplus(2);
+    return f(3);
+}

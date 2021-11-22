@@ -50,12 +50,6 @@ typedef struct basic_block {
 } BASIC_BLOCK;
 
 
-typedef struct temporary {
-    int id;
-    TOKEN* token;
-} TEMPORARY;
-
-
 BASIC_BLOCK* generate_TAC(NODE* tree);
 void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
 
@@ -66,4 +60,4 @@ void function_declaration_template(NODE* current_node, BASIC_BLOCK* current_BB);
 BASIC_BLOCK* create_Basic_Block(BASIC_BLOCK* current_block);
 void add_TAC(TAC* new_tac, BASIC_BLOCK* current_block);
 
-TEMPORARY* new_temporary(TOKEN* token);
+TOKEN* new_temporary();

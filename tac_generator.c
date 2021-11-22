@@ -190,14 +190,17 @@ void add_TAC(TAC* new_tac, BASIC_BLOCK* current_BB) {
 
 // Generate new temporary
 int temporary_counter = 0;
-TEMPORARY* new_temporary(TOKEN* token) {
+TOKEN* new_temporary() {
     
-    TEMPORARY* new_temporary = (TEMPORARY*)malloc(sizeof(TEMPORARY));
-    if (new_temporary==NULL) {
-        printf("ERROR: could not allocate memory for new temporary\n");
+    TOKEN* temporary_token = (TOKEN*)malloc(sizeof(TOKEN));
+    if (temporary_token==NULL) {
+        printf("ERROR: could not allocate memory for new temporary token\n");
         exit(1);
     }
 
-    return new_temporary;
+    temporary_token->value = temporary_counter;
+    temporary_counter += 1;
+
+    return temporary_token;
 
 }
