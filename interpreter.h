@@ -56,9 +56,9 @@ VALUE* input_builtin();
 void if_statement(NODE* if_node, FRAME* current_frame);
 void while_statement(NODE* while_node, FRAME* current_frame);
 
-void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* current_frame);
+void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* destination_frame, FRAME* lookup_frame);
 void declare_variables(NODE* initital_node, NODE* current_node, TOKEN* type_token, FRAME* current_frame);
-void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* current_frame);
+void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FRAME* destination_frame, FRAME* lookup_frame);
 void assign_variables(NODE* initial_node, NODE* current_node, FRAME* current_frame);
 void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame);
 
