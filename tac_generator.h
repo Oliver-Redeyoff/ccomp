@@ -1,9 +1,9 @@
 #include "nodes.h"
 
 enum TAC_TYPE {
-    CALL_TAC = 1,
-    LABEL_TAC = 2,
-    INSTRUCTION_TAC = 3
+    LABEL_TAC_TYPE = 1,
+    INSTRUCTION_TAC_TYPE = 2,
+    CALL_TAC_TYPE = 3
 };
 
 enum OP_TYPE {
@@ -13,33 +13,38 @@ enum OP_TYPE {
     DIVIDE = 4
 };
 
-typedef struct operation {
+typedef struct tac_operation {
     int op;
     TOKEN* src1;
     TOKEN* src2;
     TOKEN* dest;
-} OPERATION;
+} TAC_OPERATION;
 
-typedef struct label {
+typedef struct tac_label {
     TOKEN* name;
-} LABEL;
+} TAC_LABEL;
 
-typedef struct call {
+typedef struct tac_call {
     TOKEN* name;
     int arity;
-} CALL;
+} TAC_CALL;
+
+typedef struct tac_return {
+    TOKEN* name;
+} TAC_RETURN;
 
 typedef struct tac {
     int type;
     union {
-        OPERATION operation;
-        CALL call;
+        TAC_LABEL tac_label;
+        TAC_OPERATION tac_operation;
+        TAC_CALL tac_call;
+        TAC_RETURN tac_return;
     } v;
     struct tac* next;
 } TAC;
 
 typedef struct basic_block {
-    LABEL* label;
     TAC* leader;
     struct basic_block* next;
 } BASIC_BLOCK;
@@ -54,8 +59,9 @@ typedef struct temporary {
 BASIC_BLOCK* generate_TAC(NODE* tree);
 void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
 
-TAC* variable_assignement_template(NODE* current_node);
-TAC* expression_template(NODE* current_node);
+void variable_assignement_template(NODE* current_node, BASIC_BLOCK* current_BB);
+void expression_template(NODE* current_node, BASIC_BLOCK* current_BB);
+void function_declaration_template(NODE* current_node, BASIC_BLOCK* current_BB);
 
 BASIC_BLOCK* create_Basic_Block(BASIC_BLOCK* current_block);
 void add_TAC(TAC* new_tac, BASIC_BLOCK* current_block);

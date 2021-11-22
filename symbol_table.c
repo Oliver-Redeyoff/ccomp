@@ -16,17 +16,25 @@
 
 static TOKEN** symbtable;
 #define HASH_SIZE (1000)
-TOKEN *int_token, *void_token, *function_token;
+TOKEN *int_token, *void_token, *function_token, *print_builtin_token, *input_builtin_token;
 
 void init_symbtable(void)
 {
     symbtable = (TOKEN**)calloc(HASH_SIZE, sizeof(TOKEN*));
     int_token = new_token(INT);
     int_token->lexeme = "int";
+
     function_token = new_token(FUNCTION);
     function_token->lexeme = "function";
+
     void_token = new_token(VOID);
     void_token->lexeme = "void";
+
+    print_builtin_token = new_token(IDENTIFIER);
+    print_builtin_token->lexeme = "print";
+
+    input_builtin_token = new_token(IDENTIFIER);
+    input_builtin_token->lexeme = "input";
 }
 
 int hash(char *s)

@@ -11,10 +11,12 @@ enum interuptType {
   NO_INTERUPT = 0,
   RETURN_INTERUPT = 1,
   BREAK_INTERUPT = 2,
-  CONTINUE_INTERUPT = 3
+  CONTINUE_INTERUPT = 3,
+  ERROR_INTERUPT = 4
 };
 
 enum valueType {
+  ANY_TYPE = 0,
   INTEGER_TYPE = 1,
   CLOSURE_TYPE = 2
 };
@@ -43,9 +45,16 @@ typedef struct closure {
   NODE* declaration;
 } CLOSURE;
 
+extern TOKEN* lookup_token(char*);
+
 void declare_function(NODE* function_node, FRAME* current_frame);
 VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame);
 int is_inbuilt_function(TOKEN* function_name_token);
+void print_builtin(NODE* argument_values_node, FRAME* current_frame);
+VALUE* input_builtin();
+
+void if_statement(NODE* if_node, FRAME* current_frame);
+void while_statement(NODE* while_node, FRAME* current_frame);
 
 void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* current_arg_value_node, FRAME* current_frame);
 void declare_variables(NODE* initital_node, NODE* current_node, TOKEN* type_token, FRAME* current_frame);
@@ -54,7 +63,7 @@ void assign_variables(NODE* initial_node, NODE* current_node, FRAME* current_fra
 void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame);
 
 void interpret_rec(NODE* current_node, FRAME* current_frame);
-VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame);
+VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame);
 void call_main(FRAME* root_frame);
 VALUE* interpret(NODE* tree);
 

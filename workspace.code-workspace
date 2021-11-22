@@ -24,7 +24,18 @@
 			"unordered_map": "c",
 			"utility": "c",
 			"vector": "c",
-			"ranges": "c"
+			"ranges": "c",
+			"__locale": "c",
+			"__bit_reference": "c",
+			"__node_handle": "c",
+			"atomic": "c",
+			"complex": "c",
+			"functional": "c",
+			"memory_resource": "c",
+			"memory": "c",
+			"optional": "c",
+			"type_traits": "c",
+			"stop_token": "c"
 		}
 	}
 }

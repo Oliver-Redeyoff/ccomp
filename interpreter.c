@@ -6,9 +6,12 @@
 #include "interpreter.h"
 
 VALUE* global_interpret_result = NULL;
+char global_error[100] = "";
 int global_interupt = 0;
 
-char* built_in_functions[2] = {"prints", "input"};
+char* built_in_functions[2] = {"print", "input"};
+
+
 
 // Creates a new closure in given frame
 void declare_function(NODE* function_node, FRAME* current_frame) {
@@ -16,8 +19,9 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
   VALUE* clos_value = (VALUE*)malloc(sizeof(VALUE));
   CLOSURE* clos = (CLOSURE*)malloc(sizeof(CLOSURE));
   if (clos_value==NULL || clos==NULL) {
-    printf("Cannot define function\n");
-    exit(1);
+    strcpy(global_error, "Cannot define function");
+    global_interupt = ERROR_INTERUPT;
+    return;
   }
 
   clos_value->type = CLOSURE_TYPE;
@@ -32,8 +36,9 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
 
   // check the name doesn't conflict with an in-built function
   if (is_inbuilt_function(function_name_token) == 1) {
-    printf("ERROR: function name can't be the same as inbuilt function name\n");
-    exit(0);
+    strcpy(global_error, "Function name can't be the same as inbuilt function name");
+    global_interupt = ERROR_INTERUPT;
+    return;
   }
 
   add_binding(current_frame, function_name_token, clos_value);
@@ -42,6 +47,7 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
 
 }
 
+// check if function name is the same as an existing inbuilt one
 int is_inbuilt_function(TOKEN* function_name_token) {
 
   int len = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
@@ -59,8 +65,17 @@ int is_inbuilt_function(TOKEN* function_name_token) {
 // Creates new frame for function, initialises arguments and then interpretes the body
 VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame) {
 
-  // if is inbuilt function, call custom code
+  // if is inbuilt function, run custom code
   if (is_inbuilt_function(function_name_token) == 1) {
+
+    if (strcmp(function_name_token->lexeme, built_in_functions[0]) == 0) {
+      print_builtin(argument_values_node, current_frame);
+      return NULL;
+    }
+    else if (strcmp(function_name_token->lexeme, built_in_functions[1]) == 0) {
+      return input_builtin();
+    }
+
   }
 
   printf("Setting up function %s\n", function_name_token->lexeme);
@@ -85,9 +100,12 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
   interpret_rec(clos->declaration->right, current_frame);
 
   // get returned value and reset global value and interupt
-  VALUE* func_return_value = global_interpret_result;
-  global_interpret_result = NULL;
-  global_interupt = NO_INTERUPT;
+  VALUE* func_return_value = (VALUE*)malloc(sizeof(VALUE));
+  if (global_interupt == RETURN_INTERUPT) {
+    memcpy(func_return_value, global_interpret_result, sizeof(VALUE));
+    global_interpret_result = NULL;
+    global_interupt = NO_INTERUPT;
+  }
 
   if (func_return_value == NULL) {
     printf("Function %s returning null\n", function_name_token->lexeme);
@@ -100,10 +118,53 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
 
 }
 
+// Builtin print function
+void print_builtin(NODE* argument_values_node, FRAME* current_frame) {
+
+  if (argument_values_node->type == LEAF) {
+    TOKEN* string_token = (TOKEN*)argument_values_node->left;
+    if (string_token->type == STRING_LITERAL) {
+      printf("%s", string_token->lexeme);
+    }
+    else if (string_token->type == IDENTIFIER) {
+      VALUE* var_value = get_value(string_token, INTEGER_TYPE, current_frame);
+      printf("%d", var_value->v.integer);
+    }
+  } else {
+    strcpy(global_error, "Prints only takes one argument");
+    global_interupt = ERROR_INTERUPT;
+    return;
+  }
+
+  return;
+
+}
+
+// Builtin input function
+VALUE* input_builtin() {
+
+  VALUE* input = (VALUE*)malloc(sizeof(VALUE));
+  if (input == NULL) {
+    strcpy(global_error, "Could not allocate space for new value");
+    global_interupt = ERROR_INTERUPT;
+    return NULL;
+  }
+
+  input->type = INTEGER_TYPE;
+
+  // get input
+
+  input->v.integer = 1;
+
+  return input;
+
+}
+
+
 // Evaluates if expression, then creates new frame for block which is to be executed if there is one
 void if_statement(NODE* if_node, FRAME* current_frame) {
 
-  VALUE* if_condition = evaluate_expression(if_node->left, INTEGER_TYPE, current_frame);
+  VALUE* if_condition = evaluate_expression(if_node->left, current_frame);
   
   NODE* block_to_interpret = NULL;
 
@@ -139,7 +200,7 @@ void while_statement(NODE* while_node, FRAME* current_frame) {
 
     printf("Looping\n");
     // if loop condition is false exit loop
-    VALUE* loop_condition = evaluate_expression(while_node->left, INTEGER_TYPE, current_frame);
+    VALUE* loop_condition = evaluate_expression(while_node->left, current_frame);
     if (loop_condition->v.integer == 0) {
       break;
     }
@@ -179,11 +240,12 @@ void declare_function_arguments_rec(NODE* current_arg_declaration_node, NODE* cu
     declare_function_arguments_rec(current_arg_declaration_node->right, current_arg_value_node->right, current_frame);
   } 
   else if (current_arg_declaration_node->type == '~') {
-      declare_variable((TOKEN*)current_arg_declaration_node->left->left, (TOKEN*)current_arg_declaration_node->right->left, current_arg_value_node, current_frame);
+    declare_variable((TOKEN*)current_arg_declaration_node->left->left, (TOKEN*)current_arg_declaration_node->right->left, current_arg_value_node, current_frame);
   } 
   else {
-      printf("ERROR: arguments do not match up with function declaration\n");
-      exit(1);
+    strcpy(global_error, "Arguments do not match up with function declaration");
+    global_interupt = ERROR_INTERUPT;
+    return;
   }
 
   return;
@@ -202,7 +264,6 @@ void declare_variables(NODE* initial_node, NODE* current_node, TOKEN* type_token
     declare_variable(type_token, name_token, current_node->right, current_frame);
   }
   else if (current_node->type == LEAF) {
-
     // if this was a list of declarations, need to check initial_node to assignement value
     // else declare with default assignement value
     if (initial_node->right->type == ',' && initial_node->right->right->type == '=') {
@@ -212,7 +273,6 @@ void declare_variables(NODE* initial_node, NODE* current_node, TOKEN* type_token
       TOKEN* name_token = (TOKEN*)current_node->left;
       declare_variable(type_token, name_token, NULL, current_frame);
     }
-
   }
 
   return;
@@ -225,13 +285,42 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
   // create an empty value struct where we will store the value
   VALUE* variable_value = (VALUE*)malloc(sizeof(VALUE));
 
+  // get type of variable
+  int variable_type = ANY_TYPE;
+  if (strcmp(type_token->lexeme, "int") == 0) {
+    variable_type = INTEGER_TYPE;
+  }
+  else if (strcmp(type_token->lexeme, "function") == 0) {
+    variable_type = CLOSURE_TYPE;
+  }
+  else {
+    strcpy(global_error, "Value type not recognised");
+    global_interupt = ERROR_INTERUPT;
+    return;
+  }
+  variable_value->type = variable_type;
+
   printf("Declaring variable %s of type %s\n", name_token->lexeme, type_token->lexeme);
 
   // look at right to see if it is just declaration or also assignement
   if (value_node == NULL) {
-    variable_value->v.integer = 0;
+    if (variable_value->type == INTEGER_TYPE) {
+      variable_value->v.integer = 0;
+    }
+    else if (variable_value->type == CLOSURE_TYPE) {
+      strcpy(global_error, "Can't define null function");
+      global_interupt = ERROR_INTERUPT;
+      return;
+    }
   } else {
-    variable_value = evaluate_expression(value_node, INTEGER_TYPE, current_frame);
+    VALUE* evaluated_value = evaluate_expression(value_node, current_frame);
+    if (evaluated_value->type == variable_value->type) {
+      variable_value = evaluated_value;
+    } else {
+      strcpy(global_error, "Evaluated value type doesn't match variable type");
+      global_interupt = ERROR_INTERUPT;
+      return;
+    }
   }
 
   printf("Declaring variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
@@ -254,17 +343,16 @@ void assign_variables(NODE* initial_node, NODE* current_node, FRAME* current_fra
     assign_variable(name_token, current_node->right, current_frame);
   }
   else if (current_node->type == LEAF) {
-
     // if this was a list of declarations, need to check initial_node to assignement value
     // else declare with default assignement value
     if (initial_node->type == ',' && initial_node->right->type == '=') {
       TOKEN* name_token = (TOKEN*)current_node->left;
       assign_variable(name_token, initial_node->right->right->right, current_frame);
     } else {
-      printf("ERROR: error with assignement of variables\n");
-      exit(0);
+      strcpy(global_error, "Error with assignement of variables");
+      global_interupt = ERROR_INTERUPT;
+      return;
     }
-
   }
 
   return;
@@ -274,10 +362,8 @@ void assign_variables(NODE* initial_node, NODE* current_node, FRAME* current_fra
 // Variable assignement backend
 void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame) {
 
-  printf("Assigning variable %s\n", name_token->lexeme);
-
   BINDING* binding = find_binding(name_token, current_frame);
-  VALUE* new_value = evaluate_expression(value_node, INTEGER_TYPE, current_frame);
+  VALUE* new_value = evaluate_expression(value_node, current_frame);
   binding->val = new_value;
 
   printf("Assigning variable %s with value %d\n", name_token->lexeme, new_value->v.integer);
@@ -285,7 +371,6 @@ void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame) 
   return;
 
 }
-
 
 
 // Recursively interpret starting at a given node
@@ -341,13 +426,14 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
       break;
       
     case RETURN:
-      global_interpret_result = evaluate_expression(current_node->left, INTEGER_TYPE, current_frame);
+      global_interpret_result = evaluate_expression(current_node->left, current_frame);
       global_interupt = RETURN_INTERUPT;
       break;
 
     default:
-      printf("Token type %d is not recognised by interpreter\n", node_type);
-      break;
+      strcpy(global_error, "Token type is not recognised by interpreter");
+      global_interupt = ERROR_INTERUPT;
+      return;
   }
 
   return;
@@ -355,74 +441,91 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
 }
 
 // Evaluates an expression and returns the value, can probably merge this into interpret though
-VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_frame) {
+VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame) {
+
+  if (current_node == NULL) {
+    return NULL;
+  }
 
   int node_type = current_node->type;
   VALUE* res = (VALUE*)malloc(sizeof(VALUE));
-  res->type = result_type;
 
   VALUE* left_res = NULL;
   VALUE* right_res = NULL;
 
   if (node_type != LEAF) {
-    left_res = evaluate_expression(current_node->left, result_type, current_frame);
-    right_res = evaluate_expression(current_node->right, result_type, current_frame);
+    left_res = evaluate_expression(current_node->left, current_frame);
+    right_res = evaluate_expression(current_node->right, current_frame);
   }
 
   switch (node_type) {
+
     case LEAF: {
       TOKEN* value_token = (TOKEN*)current_node->left;
       if (value_token->type == CONSTANT) {
-        res->type = result_type;
+        res->type = INTEGER_TYPE;
         res->v.integer = value_token->value;
         return res;
       }
       else if (value_token->type == IDENTIFIER) {
-        return get_value(value_token, result_type, current_frame);
+        return get_value(value_token, ANY_TYPE, current_frame);
+      }
+      else {
       }
     }
 
     case '+':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer + right_res->v.integer;
       break;
 
     case '-':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer - right_res->v.integer;
       break;
 
     case '*':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer * right_res->v.integer;
       break;
 
     case '/':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer / right_res->v.integer;
       break;
 
     case '%':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer % right_res->v.integer;
       break;
 
     case EQ_OP:
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer == right_res->v.integer;
       break;
 
     case NE_OP:
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer != right_res->v.integer;
       break;
 
     case '>':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer > right_res->v.integer;
       break;
 
     case GE_OP:
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer >= right_res->v.integer;
       break;
 
     case '<':
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer < right_res->v.integer;
       break;
 
     case LE_OP:
+      res->type = INTEGER_TYPE;
       res->v.integer = left_res->v.integer <= right_res->v.integer;
       break;
     
@@ -430,9 +533,10 @@ VALUE* evaluate_expression(NODE* current_node, int result_type, FRAME* current_f
       return call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
 
     default:
-      printf("ERROR: operator is not recognised\n");
-      exit(0);
-      break;
+      strcpy(global_error, "Operator is not recognised");
+      global_interupt = ERROR_INTERUPT;
+      return NULL;
+
   }
 
   return res;
@@ -450,8 +554,9 @@ void call_main(FRAME* root_frame) {
       break;
     } else {
       if (current_binding->next == NULL) {
-        printf("ERROR: no main function is defined in root scope\n");
-        exit(0);
+        strcpy(global_error, "No main function is defined in root scope");
+        global_interupt = ERROR_INTERUPT;
+        return;
       } else {
         current_binding = current_binding->next;
       }
@@ -459,6 +564,7 @@ void call_main(FRAME* root_frame) {
   }
 
   return;
+
 }
 
 // Entry point for interpreter
@@ -470,8 +576,21 @@ VALUE* interpret(NODE* tree) {
   // Populate root frame with global bindings
   interpret_rec(tree, root_frame);
 
+  // Add global bindings for builtin functions
+  int len = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
+  for (int i=0 ; i<len ; i++) {
+    TOKEN* builtin_token = lookup_token(built_in_functions[i]);
+    VALUE* builtin_closure_value = (VALUE*)malloc(sizeof(VALUE));
+    builtin_closure_value->type = CLOSURE_TYPE;
+    add_binding(root_frame, builtin_token, builtin_closure_value);
+  }
+
   // Call main method
   call_main(root_frame);
+
+  if (global_interupt == ERROR_INTERUPT) {
+    printf("ERROR: %s\n", global_error);
+  }
 
   return NULL;
 
@@ -484,8 +603,9 @@ FRAME* extend_frame(FRAME* frame) {
 
   FRAME* new_frame = (FRAME*)malloc(sizeof(FRAME));
   if (new_frame==NULL) {
-    printf("ERROR: cannot create new frame frame\n");
-    exit(1);
+    strcpy(global_error, "Cannot create new frame frame");
+    global_interupt = ERROR_INTERUPT;
+    return NULL;
   }
 
   new_frame->bindings = NULL;
@@ -500,8 +620,9 @@ BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val) {
 
   BINDING* b = (BINDING*)malloc(sizeof(BINDING));
   if (b==NULL){
-      printf("ERROR: cannot create binding for %s\n", name_token->lexeme);
-      exit(1);
+    strcpy(global_error, "Cannot create binding");
+    global_interupt = ERROR_INTERUPT;
+    return NULL;
   }
 
   b->name_token = name_token;
@@ -550,8 +671,9 @@ BINDING* find_binding(TOKEN* search_token, FRAME* frame) {
 
     // if not found look at parent frame
     if (current_frame->next == NULL) {
-      printf("ERROR: could not find binding %s\n", search_token->lexeme);
-      exit(0);
+      strcpy(global_error, "Could not find binding");
+      global_interupt = ERROR_INTERUPT;
+      return NULL;
     } else {
       current_frame = current_frame->next;
     }
@@ -566,7 +688,11 @@ VALUE* get_value(TOKEN* search_token, int search_type, FRAME* frame) {
 
   BINDING* binding = find_binding(search_token, frame);
 
-  if (binding->val->type == search_type) {
+  if (binding == NULL) {
+    return NULL;
+  }
+
+  if (search_type == ANY_TYPE || binding->val->type == search_type) {
     return binding->val;
   }
 

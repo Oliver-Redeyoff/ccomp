@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
 #include <string.h>
 #include "token.h"
 #include "nodes.h"
@@ -99,29 +100,84 @@ void print_tree(NODE* tree) {
     print_tree0(tree, 0);
 }
 
+void print_tac(BASIC_BLOCK* current_BB) {
+
+  while (1) {
+    TAC* current_TAC = current_BB->leader;
+
+    if (current_TAC == NULL) {
+      printf("ERROR: basic block is empty\n");
+      return;
+    }
+
+    printf("\n");
+
+    while (1) {
+      switch (current_TAC->type)
+      {
+      case LABEL_TAC_TYPE: 
+        printf("label %s\n", current_TAC->v.tac_label.name->lexeme);
+        break;
+      
+      default:
+        break;
+      }
+
+      // move onto next tac in basic block
+      if (current_TAC->next == NULL) {
+        break;
+      } else {
+        current_TAC = current_TAC->next;
+      }
+    }
+
+    // move onto next basic block
+    if (current_BB->next == NULL) {
+      break;
+    } else {
+      current_BB = current_BB->next;
+    }
+  }
+
+  return;
+
+}
 
 
 //////////
 // Main //
 //////////
 int main(int argc, char** argv) {
-    
-    NODE* tree;
 
-    if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
-    init_symbtable();
-    //printf("--C COMPILER\n");
-    
-    // Parse inputed program into AST
-    yyparse();
-    tree = ans;
-    print_tree(tree);
-    
-    // Interprete result of the program from AST
-    VALUE* result = interpret(tree);
+  NODE* tree;
 
-    // Generate tac from AST
-    BASIC_BLOCK* tac = generate_TAC(tree);
+  if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
+  init_symbtable();
+  //printf("--C COMPILER\n");
+  
+  // Parse inputed program into AST
+  yyparse();
+  tree = ans;
+  print_tree(tree);
 
-    return 0;
+  // scanf("%*[^\n]");
+  // char buf[12];
+  // printf("Enter string : ");
+  // fgets(buf, 12, stdin);
+  // printf("string is: %s\n", buf);
+  
+  // Interprete result of the program from AST
+  printf("\n\n");
+  printf("--INTEPRETATION--\n");
+  VALUE* result = interpret(tree);
+  printf("\n\n");
+
+  // Generate tac from AST
+  printf("--TAC GENERATION--\n");
+  BASIC_BLOCK* tac = generate_TAC(tree);
+  print_tac(tac);
+  printf("\n\n");
+
+  return 0;
+
 }
