@@ -66,9 +66,11 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             }
             break;
 
-        case '=':
-            variable_assignement_template(current_node, current_BB);
+        case '=': {
+            TOKEN* result_temporary = expression_template(current_node->right, current_BB);
+            variable_assignement_rec(current_node, result_temporary, current_BB);
             break;
+        }
 
         case ',':
             variable_assignement_template(current_node, current_BB);
@@ -79,6 +81,7 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             break;
 
         case RETURN:
+            return_template(current_node, current_BB);
             break;
 
         default:
@@ -94,15 +97,136 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
 
 
 // Templates
-void variable_assignement_template(NODE* current_node, BASIC_BLOCK* current_BB) {
+void variable_assignement_template(NODE* assignement_node, BASIC_BLOCK* current_BB) {
+
+    TOKEN* result_temporary = NULL;
+
+    // map the expression to TAC and use that to assign values to variables
+    if (assignement_node->right->type == '=') {
+        result_temporary = expression_template(assignement_node->right->right, current_BB);
+    }
+    else if (assignement_node->right->type == ',') {
+        result_temporary = expression_template(assignement_node->right->right->right, current_BB);
+    }
+
+    variable_assignement_rec(assignement_node->right, result_temporary, current_BB);
 
     return;
 
 }
 
-void expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
+void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB) {
+
+    TOKEN* variable_token = NULL;
+
+    if (current_node->type == '=') {
+        variable_token = (TOKEN*)current_node->left->left;
+    }
+    else if (current_node->type == ',') {
+        variable_assignement_rec(current_node->left, result_temporary, current_BB);
+        variable_assignement_rec(current_node->right, result_temporary, current_BB);
+    }
+    else if (current_node->type == LEAF) {
+        variable_token = (TOKEN*)current_node->left;
+    }
+
+    // if we have a variable name to assign the value to, do so
+    if (variable_token != NULL) {
+        TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+        new_tac->type = OPERATION_TAC_TYPE;
+
+        TAC_OPERATION* operation = malloc(sizeof(TAC_OPERATION));
+        operation->op = NONE_OPERATION;
+        operation->dest = variable_token;
+        operation->src1 = result_temporary;
+
+        new_tac->v.tac_operation = *operation;
+
+        add_TAC(new_tac, current_BB);
+    }
 
     return;
+
+}
+
+// Maps an expression to TAC and returns the temporary token which contains the value of the expression
+TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
+
+    printf("In expression template\n");
+
+    int node_type = current_node->type;
+
+    TOKEN* left_token = NULL;
+    TOKEN* right_token = NULL;
+
+    int operation;
+
+    switch (node_type) {
+
+        case LEAF: {
+            printf("Leaf case\n");
+            TOKEN* token = (TOKEN*)current_node->left;
+            return token;
+        }
+
+        case '+': {
+            printf("Add case\n");
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = ADD_OPERATION;
+            break;
+        }
+
+        case '-': {
+            printf("Minus case\n");
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = SUBTRACT_OPERATION;
+            break;
+        }
+
+        case '*': {
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = MULTIPLY_OPERATION;
+            break;
+        }
+
+        case '/': {
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = DIVIDE_OPERATION;
+            break;
+        }    
+
+        default:
+            break;
+
+    }
+
+    if (left_token != NULL && right_token != NULL) {
+
+        TOKEN* dest_token = new_temporary();
+        //printf("type of dest : %d\n", dest_token->type);
+
+        TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+        new_tac->type = OPERATION_TAC_TYPE;
+
+        TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
+        tac_operation->op = operation;
+        tac_operation->dest = dest_token;
+        tac_operation->src1 = left_token;
+        tac_operation->src2 = right_token;
+
+        new_tac->v.tac_operation = *tac_operation;
+
+        add_TAC(new_tac, current_BB);
+
+        return dest_token;
+
+    }
+
+    return NULL;
 
 }
 
@@ -131,7 +255,16 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
 void return_template(NODE* return_node, BASIC_BLOCK* current_BB) {
 
-    
+    TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+    new_tac->type = RETURN_TAC_TYPE;
+
+    TAC_RETURN* tac_return = (TAC_RETURN*)malloc(sizeof(TAC_RETURN));
+    TOKEN* return_result = expression_template(return_node->left, current_BB);
+    tac_return->name = return_result;
+
+    new_tac->v.tac_return = *tac_return;
+
+    add_TAC(new_tac, current_BB);
 
     return;
 
@@ -163,6 +296,8 @@ BASIC_BLOCK* create_Basic_Block(BASIC_BLOCK* current_BB) {
 
 // Add a TAC to the end of the list of instructions of a Basic Block
 void add_TAC(TAC* new_tac, BASIC_BLOCK* current_BB) {
+
+    printf("Adding new tac\n");
 
     TAC* current_TAC = current_BB->leader;
 
@@ -198,6 +333,7 @@ TOKEN* new_temporary() {
         exit(1);
     }
 
+    temporary_token->type = TEMPORARY_IDENTIFIER;
     temporary_token->value = temporary_counter;
     temporary_counter += 1;
 

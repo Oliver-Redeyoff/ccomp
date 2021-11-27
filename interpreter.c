@@ -159,8 +159,18 @@ VALUE* input_builtin() {
   input->type = INTEGER_TYPE;
 
   // get input
+  int input_val = 0;
+  
+  // clear stdin
+  int c;
+  while ((c = getchar()) != '\n' && c != EOF) { }
 
-  input->v.integer = 1;
+  printf("User input : ");
+  scanf("%d", &input_val);
+  //fgets(buf, 12, stdin);
+  printf("Input of user was %d\n", input_val);
+
+  input->v.integer = input_val;
 
   return input;
 

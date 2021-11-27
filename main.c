@@ -15,7 +15,6 @@ extern NODE* yyparse(void);
 extern NODE* ans;
 extern void init_symbtable(void);
 
-
 /////////////////////////
 // Visualisation stuff //
 /////////////////////////
@@ -102,6 +101,8 @@ void print_tree(NODE* tree) {
 
 void print_tac(BASIC_BLOCK* current_BB) {
 
+  char operation_characters[5] = {'p', '+', '-', '*', '/'};
+
   while (1) {
     TAC* current_TAC = current_BB->leader;
 
@@ -113,14 +114,51 @@ void print_tac(BASIC_BLOCK* current_BB) {
     printf("\n");
 
     while (1) {
-      switch (current_TAC->type)
-      {
-      case LABEL_TAC_TYPE: 
-        printf("label %s\n", current_TAC->v.tac_label.name->lexeme);
-        break;
-      
-      default:
-        break;
+      switch (current_TAC->type) {
+
+        case LABEL_TAC_TYPE: 
+          printf("label %s\n", current_TAC->v.tac_label.name->lexeme);
+          break;
+
+        case OPERATION_TAC_TYPE: {
+          TAC_OPERATION operation = current_TAC->v.tac_operation;
+          char* destination;
+          char operation_char = operation_characters[operation.op];
+          char* source1;
+          char* source2;
+          
+          // print destination
+          if (operation.dest->type == IDENTIFIER) { printf("%s = ", operation.dest->lexeme); }
+          else if (operation.dest->type == TEMPORARY_IDENTIFIER) { printf("t%d = ", operation.dest->value); }
+
+          // print source 1
+          if (operation.src1->type == IDENTIFIER) { printf("%s", operation.src1->lexeme); }
+          else if (operation.src1->type == TEMPORARY_IDENTIFIER) { printf("t%d", operation.src1->value); }
+          else if (operation.src1->type == CONSTANT) { printf("%d", operation.src1->value); }
+
+          // print source 2
+          if (operation.src2 != NULL) {
+            printf(" %c ", operation_char);
+            if (operation.src2->type == IDENTIFIER) { printf("%s", operation.src2->lexeme); }
+            else if (operation.src2->type == TEMPORARY_IDENTIFIER) { printf("t%d", operation.src2->value); }
+            else if (operation.src2->type == CONSTANT) { printf("%d", operation.src2->value); }
+          }
+
+          printf("\n");
+
+          break;
+        }
+
+        case RETURN_TAC_TYPE: {
+          TOKEN* return_token = current_TAC->v.tac_return.name;
+          if (return_token->type == IDENTIFIER) { printf("return %s\n", return_token->lexeme); }
+          else if (return_token->type == TEMPORARY_IDENTIFIER) { printf("return t%d\n", return_token->value); }
+          else if (return_token->type == CONSTANT) { printf("return %d\n", return_token->value); }
+        }
+        
+        default:
+          break;
+
       }
 
       // move onto next tac in basic block
@@ -160,11 +198,14 @@ int main(int argc, char** argv) {
   tree = ans;
   print_tree(tree);
 
-  // scanf("%*[^\n]");
-  // char buf[12];
-  // printf("Enter string : ");
-  // fgets(buf, 12, stdin);
-  // printf("string is: %s\n", buf);
+  // int c;
+  // while ((c = getchar()) != '\n' && c != EOF) { }
+
+  // int input_val;
+
+  // printf("User input : ");
+  // scanf("%d", &input_val);
+  // printf("Input of user was %c\n", input_val);
   
   // Interprete result of the program from AST
   printf("\n\n");
