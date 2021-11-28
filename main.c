@@ -117,7 +117,19 @@ void print_tac(BASIC_BLOCK* current_BB) {
       switch (current_TAC->type) {
 
         case LABEL_TAC_TYPE: 
-          printf("label %s\n", current_TAC->v.tac_label.name->lexeme);
+          printf("\033[0;35mlabel %s\033[0m\n", current_TAC->v.tac_label.name->lexeme);
+          break;
+
+        case FUNCTION_START_TAC_TYPE:
+          printf("func start %s %d\n", current_TAC->v.tac_function_delimiter.name->lexeme, current_TAC->v.tac_function_delimiter.arity);
+          break;
+
+        case FUNCTION_END_TAC_TYPE:
+          printf("func end %s %d\n", current_TAC->v.tac_function_delimiter.name->lexeme, current_TAC->v.tac_function_delimiter.arity);
+          break;
+
+        case FUNCTION_CALL_TAC_TYPE:
+          printf("call %s\n", current_TAC->v.tac_function_call.name->lexeme);
           break;
 
         case OPERATION_TAC_TYPE: {
@@ -129,31 +141,33 @@ void print_tac(BASIC_BLOCK* current_BB) {
           
           // print destination
           if (operation.dest->type == IDENTIFIER) { printf("%s = ", operation.dest->lexeme); }
-          else if (operation.dest->type == TEMPORARY_IDENTIFIER) { printf("t%d = ", operation.dest->value); }
+          else if (operation.dest->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d = ", operation.dest->value); }
+          else if (operation.dest->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d = ", operation.dest->value); }
+          else if (operation.dest->type == RETURN_REG_IDENTIFIER) { printf("r%d = ", operation.dest->value); }
 
           // print source 1
           if (operation.src1->type == IDENTIFIER) { printf("%s", operation.src1->lexeme); }
-          else if (operation.src1->type == TEMPORARY_IDENTIFIER) { printf("t%d", operation.src1->value); }
+          else if (operation.src1->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d", operation.src1->value); }
+          else if (operation.src1->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d", operation.src1->value); }
+          else if (operation.src1->type == RETURN_REG_IDENTIFIER) { printf("r%d", operation.src1->value); }
           else if (operation.src1->type == CONSTANT) { printf("%d", operation.src1->value); }
 
           // print source 2
           if (operation.src2 != NULL) {
             printf(" %c ", operation_char);
             if (operation.src2->type == IDENTIFIER) { printf("%s", operation.src2->lexeme); }
-            else if (operation.src2->type == TEMPORARY_IDENTIFIER) { printf("t%d", operation.src2->value); }
+            else if (operation.src2->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d", operation.src2->value); }
+            else if (operation.src2->type == RETURN_REG_IDENTIFIER) { printf("r%d", operation.src2->value); }
             else if (operation.src2->type == CONSTANT) { printf("%d", operation.src2->value); }
+          }
+
+          if (operation.is_declaration == 1) {
+            printf(" (declaration) ");
           }
 
           printf("\n");
 
           break;
-        }
-
-        case RETURN_TAC_TYPE: {
-          TOKEN* return_token = current_TAC->v.tac_return.name;
-          if (return_token->type == IDENTIFIER) { printf("return %s\n", return_token->lexeme); }
-          else if (return_token->type == TEMPORARY_IDENTIFIER) { printf("return t%d\n", return_token->value); }
-          else if (return_token->type == CONSTANT) { printf("return %d\n", return_token->value); }
         }
         
         default:
@@ -209,14 +223,34 @@ int main(int argc, char** argv) {
   
   // Interprete result of the program from AST
   printf("\n\n");
+  printf("-----------------\n");
   printf("--INTEPRETATION--\n");
+  printf("-----------------\n\n");
+
+  printf("--DEBUG START--\n\n");
+
   VALUE* result = interpret(tree);
-  printf("\n\n");
+  
+  printf("\n--DEBUG END--\n");
+  printf("\n\n\n");
 
   // Generate tac from AST
+  printf("------------------\n");
   printf("--TAC GENERATION--\n");
+  printf("------------------\n\n");
+
+  printf("--DEBUG START--\n\n");
+  
   BASIC_BLOCK* tac = generate_TAC(tree);
+  
+  printf("\n--DEBUG END--\n");
+  printf("\n\n");
+  
+  printf("--RESULT START--\n");
+  
   print_tac(tac);
+  
+  printf("\n--RESULT END--\n");
   printf("\n\n");
 
   return 0;

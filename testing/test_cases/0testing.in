@@ -1,10 +1,12 @@
 int main(void) {
-    int x, y = 1;
-    x = x + 3 - 2;
+    int x = test(1) + test2(2);
     return x;
 }
 
-int test(int x) {
-    x = x + 1 * 2;
-    return x;
+int test(int y) {
+    return y;
+}
+
+int test2(int u) {
+    return u;
 }
