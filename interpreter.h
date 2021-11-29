@@ -1,3 +1,6 @@
+#ifndef _INTERPRETER_H_ 
+#define _INTERPRETER_H_
+
 #include <stdlib.h>
 #include "nodes.h"
 
@@ -72,3 +75,5 @@ BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val);
 
 BINDING* find_binding(TOKEN* search_token, FRAME* frame);
 VALUE* get_value(TOKEN* search_token, int search_type, FRAME* frame);
+
+#endif

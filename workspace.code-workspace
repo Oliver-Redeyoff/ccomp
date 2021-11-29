@@ -35,7 +35,9 @@
 			"memory": "c",
 			"optional": "c",
 			"type_traits": "c",
-			"stop_token": "c"
+			"stop_token": "c",
+			"tac_generator.h": "c",
+			"mips_generator.h": "c"
 		}
 	}
 }

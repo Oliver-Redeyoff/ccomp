@@ -8,7 +8,7 @@
 #include "C.tab.h"
 #include "interpreter.h"
 #include "tac_generator.h"
-#include "mc_generator.h"
+#include "mips_generator.h"
 
 extern int yydebug;
 extern NODE* yyparse(void);
@@ -236,6 +236,8 @@ int main(int argc, char** argv) {
   // scanf("%d", &input_val);
   // printf("Input of user was %c\n", input_val);
   
+
+
   // Interprete result of the program from AST
   printf("\n\n");
   printf("-----------------\n");
@@ -249,6 +251,8 @@ int main(int argc, char** argv) {
   printf("\n--DEBUG END--\n");
   printf("\n\n\n");
 
+
+
   // Generate tac from AST
   printf("------------------\n");
   printf("--TAC GENERATION--\n");
@@ -256,16 +260,30 @@ int main(int argc, char** argv) {
 
   printf("--DEBUG START--\n\n");
   
-  BASIC_BLOCK* tac = generate_TAC(tree);
+  BASIC_BLOCK* root_BB = generate_TAC(tree);
   
   printf("\n--DEBUG END--\n");
   printf("\n\n");
   
   printf("--RESULT START--\n");
   
-  print_tac(tac);
+  print_tac(root_BB);
   
   printf("\n--RESULT END--\n");
+  printf("\n\n");
+
+
+
+  // Generate tac from AST
+  printf("-------------------\n");
+  printf("--MIPS GENERATION--\n");
+  printf("-------------------\n\n");
+
+  printf("--DEBUG START--\n\n");
+  
+  generate_MIPS(root_BB);
+  
+  printf("\n--DEBUG END--\n");
   printf("\n\n");
 
   return 0;

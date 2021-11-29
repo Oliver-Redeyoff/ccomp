@@ -1,3 +1,6 @@
+#ifndef _TAC_H_ 
+#define _TAC_H_
+
 #include "nodes.h"
 
 enum REGISTER_TOKEN_TYPE {
@@ -112,3 +115,5 @@ TOKEN* new_loop();
 
 TAC* generate_label(TOKEN* name);
 TAC* generate_goto(TOKEN* name);
+
+#endif

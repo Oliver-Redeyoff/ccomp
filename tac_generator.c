@@ -7,7 +7,6 @@
 
 TOKEN* return_reg_token;
 
-
 // Entry point of TAC generation
 BASIC_BLOCK* generate_TAC(NODE* tree) {
 
