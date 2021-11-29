@@ -86,10 +86,13 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             return_template(current_node, current_BB);
             break;
 
-        case IF: {
+        case IF:
             if_template(current_node, current_BB);
             break;
-        }
+
+        case WHILE:
+            while_template(current_node, current_BB);
+            break;
 
         default:
             printf("Node type %d not recognised\n", node_type);
@@ -293,6 +296,34 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
     }
 
     return NULL;
+
+}
+
+// Returns token that contains value of if passed in token is false
+TOKEN* generate_false_check(TOKEN* value_token, BASIC_BLOCK* current_BB) {
+
+    // create token to represent false value 
+    TOKEN* false_token = (TOKEN*)malloc(sizeof(TOKEN));
+    false_token->type = CONSTANT;
+    false_token->value = 0;
+
+    // create new temporary
+    TOKEN* result_token = new_temporary_reg();
+
+    // new operation TAC
+    TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
+    tac_operation->is_declaration = 0;
+    tac_operation->op = EQUAL_OPERATION;
+    tac_operation->dest = result_token;
+    tac_operation->src1 = value_token;
+    tac_operation->src2 = false_token;
+    // new TAC
+    TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+    new_tac->type = OPERATION_TAC_TYPE;
+    new_tac->v.tac_operation = *tac_operation;
+    add_TAC(new_tac, current_BB);
+    
+    return result_token;
 
 }
 
@@ -520,10 +551,12 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     // create if condition TAC
     // get token containing result of if condition
     TOKEN* if_condition_result = expression_template(if_node->left, current_BB);
+    TOKEN* inverse_if_condition_result = generate_false_check(if_condition_result, current_BB);
+
     // new if statement TAC
     TAC_IF* tac_if = (TAC_IF*)malloc(sizeof(TAC_IF));
-    tac_if->condition_result = if_condition_result;
-    tac_if->else_label = else_label_token;
+    tac_if->condition_result = inverse_if_condition_result;
+    tac_if->jump_label = else_label_token;
     // new TAC
     TAC* new_tac = (TAC*)malloc(sizeof(TAC));
     new_tac->type = IF_TAC_TYPE;
@@ -557,6 +590,45 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     // put next part bellow else body
     TAC* next_label_tac = generate_label(next_label_token);
     add_TAC(next_label_tac, current_BB);
+
+    return;
+
+}
+
+// While statement
+void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
+
+    TOKEN* loop_token = new_loop();
+    TOKEN* next_token = new_next();
+
+    // add loop label tac
+    TAC* loop_label = generate_label(loop_token);
+    add_TAC(loop_label, current_BB);
+
+    // add check for while condition
+    TOKEN* while_condition_result = expression_template(while_node->left, current_BB);
+    TOKEN* inverse_while_condition_result = generate_false_check(while_condition_result, current_BB);
+
+    // new if statement TAC
+    TAC_IF* tac_if = (TAC_IF*)malloc(sizeof(TAC_IF));
+    tac_if->condition_result = inverse_while_condition_result;
+    tac_if->jump_label = next_token;
+    // new TAC
+    TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+    new_tac->type = IF_TAC_TYPE;
+    new_tac->v.tac_if = *tac_if;
+    add_TAC(new_tac, current_BB);
+
+    // add body of while block
+    map_to_TAC(while_node->right, current_BB);
+
+    // add goto loop
+    TAC* loop_goto = generate_goto(loop_token);
+    add_TAC(loop_goto, current_BB);
+
+    // add next label
+    TAC* next_label = generate_label(next_token);
+    add_TAC(next_label, current_BB);
 
     return;
 
@@ -721,6 +793,32 @@ TOKEN* new_next() {
 
 }
 
+// Generate new loop label token
+int loop_counter = 0;
+TOKEN* new_loop() {
+   
+    TOKEN* loop_token = (TOKEN*)malloc(sizeof(TOKEN));
+    if (loop_token==NULL) {
+        printf("ERROR: could not allocate memory for new else token\n");
+        exit(1);
+    }
+
+    loop_token->type = IDENTIFIER;
+    char* buf = (char*)malloc(12*sizeof(char));
+    buf[0] = 'l';
+    buf[1] = 'o';
+    buf[2] = 'o';
+    buf[3] = 'p';
+    buf[4] = '_';
+    buf[5] = loop_counter+'0';
+    loop_token->lexeme = buf;
+
+    loop_counter += 1;
+
+    return loop_token;
+ 
+}
+
 
 // Generate new label tac
 TAC* generate_label(TOKEN* name) {
@@ -737,7 +835,7 @@ TAC* generate_label(TOKEN* name) {
 
 }
 
-// Generate new label tac
+// Generate new goto tac
 TAC* generate_goto(TOKEN* name) {
 
     // new operation TAC

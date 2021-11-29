@@ -56,7 +56,7 @@ typedef struct tac_function_call {
 
 typedef struct tac_if {
     TOKEN* condition_result;
-    TOKEN* else_label;
+    TOKEN* jump_label;
 } TAC_IF;
 
 typedef struct tac {
@@ -85,6 +85,7 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
 void variable_declaration_template(NODE* assignement_node, BASIC_BLOCK* current_BB);
 void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB, int is_declaration);
 TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB);
+TOKEN* generate_false_check(TOKEN* value_token, BASIC_BLOCK* current_BB);
 
 void function_declaration_template(NODE* current_node, BASIC_BLOCK* current_BB);
 int function_declaration_argument_count_rec(NODE* current_node);
@@ -97,6 +98,7 @@ void return_template(NODE* return_node, BASIC_BLOCK* current_BB);
 TAC_FUNCTION_DELIMITER* get_basic_block_function_start(BASIC_BLOCK* current_BB);
 
 void if_template(NODE* if_node, BASIC_BLOCK* current_BB);
+void while_template(NODE* while_node, BASIC_BLOCK* current_BB);
 
 BASIC_BLOCK* append_Basic_Block(BASIC_BLOCK* current_block);
 BASIC_BLOCK* insert_Basic_Block(BASIC_BLOCK* current_block);
@@ -106,6 +108,7 @@ TOKEN* new_temporary_reg();
 TOKEN* new_argument_reg(int id);
 TOKEN* new_else();
 TOKEN* new_next();
+TOKEN* new_loop();
 
 TAC* generate_label(TOKEN* name);
 TAC* generate_goto(TOKEN* name);

@@ -1,21 +1,7 @@
 int main(void) {
     int x = 2;
-    if (x == 2) {
-        return 2;
-    } else {
-        return 3;
+    while (x != 4) {
+        x = x + 1;
     }
-    x = 2+1;
-    x = x-1;
-    return 1;
-}
-
-int test(int y) {
-
-    int test_inner(int u) {
-        return u;
-    }
-
-    return test_inner(y);
-
+    return x;
 }

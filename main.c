@@ -143,7 +143,7 @@ void print_tac(BASIC_BLOCK* current_BB) {
           else if (tac_if.condition_result->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d ", tac_if.condition_result->value); }
           else if (tac_if.condition_result->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d ", tac_if.condition_result->value); }
           else if (tac_if.condition_result->type == RETURN_REG_IDENTIFIER) { printf("v%d ", tac_if.condition_result->value); }
-          printf("%s\n", tac_if.else_label->lexeme);
+          printf("\033[0;35m%s\033[0m\n", tac_if.jump_label->lexeme);
           break;
         }
 
