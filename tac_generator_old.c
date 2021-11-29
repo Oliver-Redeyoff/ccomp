@@ -86,10 +86,9 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             return_template(current_node, current_BB);
             break;
 
-        case IF: {
+        case IF:
             if_template(current_node, current_BB);
             break;
-        }
 
         default:
             printf("Node type %d not recognised\n", node_type);
@@ -478,46 +477,17 @@ void return_template(NODE* return_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_operation = *tac_operation;
     add_TAC(new_tac, current_BB);
 
-    // end current function
-    TAC_FUNCTION_DELIMITER* function_end_tac = get_basic_block_function_start(current_BB);
-    TAC* new_tac_2 = (TAC*)malloc(sizeof(TAC));
-    new_tac_2->type = FUNCTION_END_TAC_TYPE;
-    new_tac_2->v.tac_function_delimiter = *function_end_tac;
-    add_TAC(new_tac_2, current_BB);
-
     return;
-
-}
-
-// Get name of current function Basic Block
-TAC_FUNCTION_DELIMITER* get_basic_block_function_start(BASIC_BLOCK* current_BB) {
-
-    TAC* current_TAC = current_BB->leader;
-
-    while (1) {
-
-        if (current_TAC->type == FUNCTION_START_TAC_TYPE) {
-            return &current_TAC->v.tac_function_delimiter;
-        } else {
-            current_TAC = current_TAC->next;
-        }
-
-    }
-
-    return NULL;
 
 }
 
 
 // If statement
-void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
+BASIC_BLOCK* if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
 
-    // create tokens for else and next label
     TOKEN* else_label_token = new_else();
     TOKEN* next_label_token = new_next();
 
-
-    // create if condition TAC
     // get token containing result of if condition
     TOKEN* if_condition_result = expression_template(if_node->left, current_BB);
     // new if statement TAC
@@ -530,35 +500,35 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_if = *tac_if;
     add_TAC(new_tac, current_BB);
 
+    // create new block for if body
+    BASIC_BLOCK* if_BB = append_Basic_Block(current_BB);
 
-    // put if part bellow if statement
+    // create new block for else body
+    BASIC_BLOCK* else_BB = append_Basic_Block(if_BB);
+    TAC* label_tac = generate_label(else_label_token);
+    add_TAC(label_tac, else_BB);
+
+    // create new block for next
+    BASIC_BLOCK* next_BB = append_Basic_Block(else_BB);
+    TAC* next_label_tac = generate_label(next_label_token);
+    add_TAC(next_label_tac, next_BB);
+
+    // create tac for body of if and else
     if (if_node->right->type == ELSE) {
         // map body of if into Basic Block
-        map_to_TAC(if_node->right->left, current_BB);
+        map_to_TAC(if_node->right->left, if_BB);
+        // map body of else into Basic Block
+        map_to_TAC(if_node->right->right, else_BB);
     } else {
         // map body of if into Basic Block
-        map_to_TAC(if_node->right, current_BB);
+        map_to_TAC(if_node->right, if_BB);
     }
-    TAC* goto_next_tac_from_if = generate_goto(next_label_token);
-    add_TAC(goto_next_tac_from_if, current_BB);
 
+    // add goto next to the end of the if Basic Block
+    TAC* goto_next_tac = generate_goto(next_label_token);
+    add_TAC(goto_next_tac, if_BB);
 
-    // put else label bellow if body
-    TAC* else_label_tac = generate_label(else_label_token);
-    add_TAC(else_label_tac, current_BB);
-    if (if_node->right->type == ELSE) {
-        // map body of else into Basic Block
-        map_to_TAC(if_node->right->right, current_BB);
-    }
-    TAC* goto_next_tac_from_else = generate_goto(next_label_token);
-    add_TAC(goto_next_tac_from_else, current_BB);
-
-
-    // put next part bellow else body
-    TAC* next_label_tac = generate_label(next_label_token);
-    add_TAC(next_label_tac, current_BB);
-
-    return;
+    return next_BB;
 
 }
 
@@ -633,7 +603,6 @@ void add_TAC(TAC* new_tac, BASIC_BLOCK* current_BB) {
 
 }
 
-
 // Generate new temporary register
 int temporary_reg_counter = 0;
 TOKEN* new_temporary_reg() {
@@ -680,14 +649,10 @@ TOKEN* new_else() {
     }
 
     else_token->type = IDENTIFIER;
-    char* buf = (char*)malloc(12*sizeof(char));
-    buf[0] = 'e';
-    buf[1] = 'l';
-    buf[2] = 's';
-    buf[3] = 'e';
-    buf[4] = '_';
-    buf[5] = else_counter+'0';
-    else_token->lexeme = buf;
+    char buf[12];
+    snprintf(buf, 12, "else_%d", else_counter);
+    char* buf2 = malloc(12*sizeof(char));
+    else_token->lexeme = "else";
 
     else_counter += 1;
 
@@ -706,14 +671,9 @@ TOKEN* new_next() {
     }
 
     next_token->type = IDENTIFIER;
-    char* buf = (char*)malloc(12*sizeof(char));
-    buf[0] = 'n';
-    buf[1] = 'e';
-    buf[2] = 'x';
-    buf[3] = 't';
-    buf[4] = '_';
-    buf[5] = next_counter+'0';
-    next_token->lexeme = buf;
+    char buf[12];
+    snprintf(buf, 12, "next_%d", else_counter);
+    next_token->lexeme = "next";
 
     next_counter += 1;
 

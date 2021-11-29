@@ -402,6 +402,16 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
   int node_type = current_node->type;
 
   switch (node_type) {
+
+    case ';':
+      interpret_rec(current_node->left, current_frame);
+      interpret_rec(current_node->right, current_frame);
+      break;
+
+    case 'D':
+      declare_function(current_node, current_frame);
+      break;
+
     case '~':
       if (current_node->left->type == LEAF) {
         declare_variables(current_node, current_node->right, (TOKEN*)current_node->left->left, current_frame);
@@ -409,15 +419,6 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
         interpret_rec(current_node->left, current_frame);
         interpret_rec(current_node->right, current_frame);
       }
-      break;
-
-    case 'D':
-      declare_function(current_node, current_frame);
-      break;
-
-    case ';':
-      interpret_rec(current_node->left, current_frame);
-      interpret_rec(current_node->right, current_frame);
       break;
 
     case '=':
@@ -428,6 +429,16 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
       assign_variables(current_node, current_node, current_frame);
       break;
 
+    case APPLY:
+      call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
+      break;
+
+    case RETURN: {
+      VALUE* return_value = evaluate_expression(current_node->left, current_frame);
+      global_interpret_result = return_value;
+      global_interupt = RETURN_INTERUPT;
+      break;
+
     case IF:
       if_statement(current_node, current_frame);
       break;
@@ -436,19 +447,14 @@ void interpret_rec(NODE* current_node, FRAME* current_frame) {
       while_statement(current_node, current_frame);
       break;
 
-    case APPLY:
-      call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
-      break;
-
     case BREAK:
       global_interupt = BREAK_INTERUPT;
       break;
-      
-    case RETURN: {
-      VALUE* return_value = evaluate_expression(current_node->left, current_frame);
-      global_interpret_result = return_value;
-      global_interupt = RETURN_INTERUPT;
+
+    case CONTINUE:
+      global_interupt = CONTINUE_INTERUPT;
       break;
+      
     }
 
     default:

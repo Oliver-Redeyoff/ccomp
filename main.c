@@ -101,7 +101,7 @@ void print_tree(NODE* tree) {
 
 void print_tac(BASIC_BLOCK* current_BB) {
 
-  char operation_characters[5] = {'p', '+', '-', '*', '/'};
+  char* operation_characters[9] = {"p", "+", "-", "*", "/", "==", "!=", "<", "<="};
 
   while (1) {
     TAC* current_TAC = current_BB->leader;
@@ -111,13 +111,17 @@ void print_tac(BASIC_BLOCK* current_BB) {
       return;
     }
 
-    printf("\n");
+    printf("\n\n--\n");
 
     while (1) {
       switch (current_TAC->type) {
 
         case LABEL_TAC_TYPE: 
-          printf("\033[0;35mlabel %s\033[0m\n", current_TAC->v.tac_label.name->lexeme);
+          printf("label \033[0;35m%s\033[0m\n", current_TAC->v.tac_label.name->lexeme);
+          break;
+
+        case GOTO_TAC_TYPE: 
+          printf("goto \033[0;35m%s\033[0m\n", current_TAC->v.tac_label.name->lexeme);
           break;
 
         case FUNCTION_START_TAC_TYPE:
@@ -132,10 +136,21 @@ void print_tac(BASIC_BLOCK* current_BB) {
           printf("call %s\n", current_TAC->v.tac_function_call.name->lexeme);
           break;
 
+        case IF_TAC_TYPE: {
+          TAC_IF tac_if = current_TAC->v.tac_if;
+          printf("if ");
+          if (tac_if.condition_result->type == IDENTIFIER) { printf("%s ", tac_if.condition_result->lexeme); }
+          else if (tac_if.condition_result->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d ", tac_if.condition_result->value); }
+          else if (tac_if.condition_result->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d ", tac_if.condition_result->value); }
+          else if (tac_if.condition_result->type == RETURN_REG_IDENTIFIER) { printf("v%d ", tac_if.condition_result->value); }
+          printf("%s\n", tac_if.else_label->lexeme);
+          break;
+        }
+
         case OPERATION_TAC_TYPE: {
           TAC_OPERATION operation = current_TAC->v.tac_operation;
           char* destination;
-          char operation_char = operation_characters[operation.op];
+          char* operation_char = operation_characters[operation.op];
           char* source1;
           char* source2;
           
@@ -143,21 +158,21 @@ void print_tac(BASIC_BLOCK* current_BB) {
           if (operation.dest->type == IDENTIFIER) { printf("%s = ", operation.dest->lexeme); }
           else if (operation.dest->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d = ", operation.dest->value); }
           else if (operation.dest->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d = ", operation.dest->value); }
-          else if (operation.dest->type == RETURN_REG_IDENTIFIER) { printf("r%d = ", operation.dest->value); }
+          else if (operation.dest->type == RETURN_REG_IDENTIFIER) { printf("v%d = ", operation.dest->value); }
 
           // print source 1
           if (operation.src1->type == IDENTIFIER) { printf("%s", operation.src1->lexeme); }
           else if (operation.src1->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d", operation.src1->value); }
           else if (operation.src1->type == ARGUMENT_REG_IDENTIFIER) { printf("a%d", operation.src1->value); }
-          else if (operation.src1->type == RETURN_REG_IDENTIFIER) { printf("r%d", operation.src1->value); }
+          else if (operation.src1->type == RETURN_REG_IDENTIFIER) { printf("v%d", operation.src1->value); }
           else if (operation.src1->type == CONSTANT) { printf("%d", operation.src1->value); }
 
           // print source 2
           if (operation.src2 != NULL) {
-            printf(" %c ", operation_char);
+            printf(" %s ", operation_char);
             if (operation.src2->type == IDENTIFIER) { printf("%s", operation.src2->lexeme); }
             else if (operation.src2->type == TEMPORARY_REG_IDENTIFIER) { printf("t%d", operation.src2->value); }
-            else if (operation.src2->type == RETURN_REG_IDENTIFIER) { printf("r%d", operation.src2->value); }
+            else if (operation.src2->type == RETURN_REG_IDENTIFIER) { printf("v%d", operation.src2->value); }
             else if (operation.src2->type == CONSTANT) { printf("%d", operation.src2->value); }
           }
 
