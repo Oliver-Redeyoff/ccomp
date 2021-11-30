@@ -5,6 +5,7 @@
 #include "C.tab.h"
 #include "mips_generator.h"
 
+// Entry point for MIPS generation
 void generate_MIPS(BASIC_BLOCK* root_BB) {
 
     printf("starting generating MIPS\n");

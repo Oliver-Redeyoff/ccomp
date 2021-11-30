@@ -9,4 +9,6 @@ function run_test {
     ./mycc <<< $text
 }
 
-run_test returned_function;
+run_test 0testing;
+#run_test recursive_factorial;
+#run_test returned_function;

@@ -124,12 +124,12 @@ void print_tac(BASIC_BLOCK* current_BB) {
           printf("goto \033[0;35m%s\033[0m\n", current_TAC->v.tac_label.name->lexeme);
           break;
 
-        case FUNCTION_START_TAC_TYPE:
-          printf("func start %s %d\n", current_TAC->v.tac_function_delimiter.name->lexeme, current_TAC->v.tac_function_delimiter.arity);
+        case BLOCK_START_TAC_TYPE:
+          printf("block start %s %d\n", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
           break;
 
-        case FUNCTION_END_TAC_TYPE:
-          printf("func end %s %d\n", current_TAC->v.tac_function_delimiter.name->lexeme, current_TAC->v.tac_function_delimiter.arity);
+        case BLOCK_END_TAC_TYPE:
+          printf("block end %s %d\n", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
           break;
 
         case FUNCTION_CALL_TAC_TYPE:
@@ -146,6 +146,10 @@ void print_tac(BASIC_BLOCK* current_BB) {
           printf("\033[0;35m%s\033[0m\n", tac_if.jump_label->lexeme);
           break;
         }
+
+        case RETURN_TAC_TYPE:
+          printf("return\n");
+          break;
 
         case OPERATION_TAC_TYPE: {
           TAC_OPERATION operation = current_TAC->v.tac_operation;

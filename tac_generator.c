@@ -33,10 +33,18 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
         printf("Is null here as well 1\n");
     }
 
-    // Add any necessary info in the pre_main block here
+    // add any necessary info in the pre_main block here
+    TOKEN* main_token = (TOKEN*)malloc(sizeof(TOKEN));
+    main_token->type = IDENTIFIER;
+    main_token->lexeme = "main";
+    TAC* goto_main = generate_goto(main_token);
+    add_TAC(goto_main, root_Basic_Block);
     
     printf("Starting translating tac\n");
     map_to_TAC(tree, root_Basic_Block);
+
+    // divide basic blocks into more basic blocks if needed
+    subdivide_basic_blocks(root_Basic_Block);
 
     return root_Basic_Block;
 
@@ -98,6 +106,60 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             exit(1);
             break;
     }
+
+    return;
+
+}
+
+// Go through generated tac and create any other necessary Basic Blocks
+void subdivide_basic_blocks(BASIC_BLOCK* root_BB) {
+
+    BASIC_BLOCK* current_BB = root_BB;
+    TAC* current_TAC = current_BB->leader;
+
+    while (1) {
+
+        current_TAC = current_BB->leader;
+
+        while (1) {
+
+            if (current_TAC->type == IF_TAC_TYPE) {
+                split_BB(current_TAC, current_BB);
+            }
+            else if (current_TAC->next != NULL 
+                    && current_TAC->next->type == LABEL_TAC_TYPE) {
+                split_BB(current_TAC, current_BB);
+            }
+
+            if (current_TAC->next == NULL) {
+                break;
+            } else {
+                current_TAC = current_TAC->next;
+            }
+
+        }
+
+        if (current_BB->next == NULL) {
+            break;
+        } else {
+            current_BB = current_BB->next;
+        }
+
+    }
+
+    return;
+
+}
+
+// Split Basic Block into two after given TAC
+void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB) {
+
+    BASIC_BLOCK* new_BB = insert_Basic_Block(current_BB);
+
+    new_BB->lexical_parent = current_BB;
+
+    new_BB->leader = current_TAC->next;
+    current_TAC->next = NULL;
 
     return;
 
@@ -332,6 +394,7 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
     // create new basic block
     BASIC_BLOCK* new_BB = append_Basic_Block(current_BB);
+    new_BB->lexical_parent = current_BB;
 
     // get function name token and put it in label name token
     TOKEN* function_name_token = (TOKEN*)D_node->left->right->left->left;
@@ -340,13 +403,13 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
     // put function name token and arity in function start TAC
     int function_arity = function_declaration_argument_count_rec(D_node->left->right->right);
-    TAC_FUNCTION_DELIMITER* tac_function_declaration = (TAC_FUNCTION_DELIMITER*)malloc(sizeof(TAC_FUNCTION_DELIMITER));
+    TAC_BLOCK_DELIMITER* tac_function_declaration = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_function_declaration->name = function_name_token;
     tac_function_declaration->arity = function_arity;
-    // create new TAC for function start indicator
+    // create new TAC for function block start indicator
     TAC* function_start_tac = (TAC*)malloc(sizeof(TAC));
-    function_start_tac->type = FUNCTION_START_TAC_TYPE;
-    function_start_tac->v.tac_function_delimiter = *tac_function_declaration;
+    function_start_tac->type = BLOCK_START_TAC_TYPE;
+    function_start_tac->v.tac_block_delimiter = *tac_function_declaration;
     add_TAC(function_start_tac, new_BB);
 
 
@@ -360,8 +423,8 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
     // create new TAC for function end indicator
     TAC* function_end_tac = (TAC*)malloc(sizeof(TAC));
-    function_end_tac->type = FUNCTION_END_TAC_TYPE;
-    function_end_tac->v.tac_function_delimiter = *tac_function_declaration;
+    function_end_tac->type = BLOCK_END_TAC_TYPE;
+    function_end_tac->v.tac_block_delimiter = *tac_function_declaration;
     add_TAC(function_end_tac, new_BB);
 
     return;
@@ -508,33 +571,12 @@ void return_template(NODE* return_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_operation = *tac_operation;
     add_TAC(new_tac, current_BB);
 
-    // end current function
-    TAC_FUNCTION_DELIMITER* function_end_tac = get_basic_block_function_start(current_BB);
-    TAC* new_tac_2 = (TAC*)malloc(sizeof(TAC));
-    new_tac_2->type = FUNCTION_END_TAC_TYPE;
-    new_tac_2->v.tac_function_delimiter = *function_end_tac;
-    add_TAC(new_tac_2, current_BB);
+    // add return TAC
+    TAC* return_tac = (TAC*)malloc(sizeof(TAC));
+    return_tac->type = RETURN_TAC_TYPE;
+    add_TAC(return_tac, current_BB);
 
     return;
-
-}
-
-// Get name of current function Basic Block
-TAC_FUNCTION_DELIMITER* get_basic_block_function_start(BASIC_BLOCK* current_BB) {
-
-    TAC* current_TAC = current_BB->leader;
-
-    while (1) {
-
-        if (current_TAC->type == FUNCTION_START_TAC_TYPE) {
-            return &current_TAC->v.tac_function_delimiter;
-        } else {
-            current_TAC = current_TAC->next;
-        }
-
-    }
-
-    return NULL;
 
 }
 
@@ -543,6 +585,7 @@ TAC_FUNCTION_DELIMITER* get_basic_block_function_start(BASIC_BLOCK* current_BB) 
 void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
 
     // create tokens for else and next label
+    TOKEN* if_label_token = new_if();
     TOKEN* else_label_token = new_else();
     TOKEN* next_label_token = new_next();
 
@@ -562,6 +605,19 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_if = *tac_if;
     add_TAC(new_tac, current_BB);
 
+    // add if label
+    TAC* if_label_tac = generate_label(if_label_token);
+    add_TAC(if_label_tac, current_BB);
+
+    // indicate start of new if block
+    TAC_BLOCK_DELIMITER* tac_if_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
+    tac_if_block_delimiter->name = if_label_token;
+    tac_if_block_delimiter->arity = 0;
+    // create new TAC for block start indicator
+    TAC* if_block_start_tac = (TAC*)malloc(sizeof(TAC));
+    if_block_start_tac->type = BLOCK_START_TAC_TYPE;
+    if_block_start_tac->v.tac_block_delimiter = *tac_if_block_delimiter;
+    add_TAC(if_block_start_tac, current_BB);
 
     // put if part bellow if statement
     if (if_node->right->type == ELSE) {
@@ -571,6 +627,13 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
         // map body of if into Basic Block
         map_to_TAC(if_node->right, current_BB);
     }
+
+    // create new TAC for if block end indicator
+    TAC* if_block_end_tac = (TAC*)malloc(sizeof(TAC));
+    if_block_end_tac->type = BLOCK_END_TAC_TYPE;
+    if_block_end_tac->v.tac_block_delimiter = *tac_if_block_delimiter;
+    add_TAC(if_block_end_tac, current_BB);
+
     TAC* goto_next_tac_from_if = generate_goto(next_label_token);
     add_TAC(goto_next_tac_from_if, current_BB);
 
@@ -578,10 +641,28 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     // put else label bellow if body
     TAC* else_label_tac = generate_label(else_label_token);
     add_TAC(else_label_tac, current_BB);
+
+    // indicate start of new else block
+    TAC_BLOCK_DELIMITER* tac_else_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
+    tac_else_block_delimiter->name = else_label_token;
+    tac_else_block_delimiter->arity = 0;
+    // create new TAC for block start indicator
+    TAC* else_block_start_tac = (TAC*)malloc(sizeof(TAC));
+    else_block_start_tac->type = BLOCK_START_TAC_TYPE;
+    else_block_start_tac->v.tac_block_delimiter = *tac_else_block_delimiter;
+    add_TAC(else_block_start_tac, current_BB);
+
     if (if_node->right->type == ELSE) {
         // map body of else into Basic Block
         map_to_TAC(if_node->right->right, current_BB);
     }
+
+    // create new TAC for else block end indicator
+    TAC* else_block_end_tac = (TAC*)malloc(sizeof(TAC));
+    else_block_end_tac->type = BLOCK_END_TAC_TYPE;
+    else_block_end_tac->v.tac_block_delimiter = *tac_else_block_delimiter;
+    add_TAC(else_block_end_tac, current_BB);
+
     TAC* goto_next_tac_from_else = generate_goto(next_label_token);
     add_TAC(goto_next_tac_from_else, current_BB);
 
@@ -618,8 +699,26 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_if = *tac_if;
     add_TAC(new_tac, current_BB);
 
+
+    // indicate start of new block
+    TAC_BLOCK_DELIMITER* tac_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
+    tac_block_delimiter->name = loop_token;
+    tac_block_delimiter->arity = 0;
+    // create new TAC for block start indicator
+    TAC* block_start_tac = (TAC*)malloc(sizeof(TAC));
+    block_start_tac->type = BLOCK_START_TAC_TYPE;
+    block_start_tac->v.tac_block_delimiter = *tac_block_delimiter;
+    add_TAC(block_start_tac, current_BB);
+
     // add body of while block
     map_to_TAC(while_node->right, current_BB);
+
+    // create new TAC for block end indicator
+    TAC* block_end_tac = (TAC*)malloc(sizeof(TAC));
+    block_end_tac->type = BLOCK_END_TAC_TYPE;
+    block_end_tac->v.tac_block_delimiter = *tac_block_delimiter;
+    add_TAC(block_end_tac, current_BB);
+
 
     // add goto loop
     TAC* loop_goto = generate_goto(loop_token);
@@ -642,7 +741,6 @@ BASIC_BLOCK* append_Basic_Block(BASIC_BLOCK* current_BB) {
         printf("ERROR: could not allocate memory for new basic block\n");
         exit(1);
     }
-    new_Basic_Block->lexical_parent = current_BB;
 
     while (1) {
         // see if basic block can be added as next, else move to next basic block
@@ -666,7 +764,6 @@ BASIC_BLOCK* insert_Basic_Block(BASIC_BLOCK* current_BB) {
         printf("ERROR: could not allocate memory for new basic block\n");
         exit(1);
     }
-    new_Basic_Block->lexical_parent = current_BB;
 
     if (current_BB->next == NULL) {
         current_BB->next = current_BB;
@@ -740,6 +837,30 @@ TOKEN* new_argument_reg(int id) {
 
 }
 
+// Generate new if label token
+int if_counter = 0;
+TOKEN* new_if() {
+
+    TOKEN* if_token = (TOKEN*)malloc(sizeof(TOKEN));
+    if (if_token==NULL) {
+        printf("ERROR: could not allocate memory for new if token\n");
+        exit(1);
+    }
+
+    if_token->type = IDENTIFIER;
+    char* buf = (char*)malloc(12*sizeof(char));
+    buf[0] = 'i';
+    buf[1] = 'f';
+    buf[2] = '_';
+    buf[3] = if_counter+'0';
+    if_token->lexeme = buf;
+
+    if_counter += 1;
+
+    return if_token;
+
+}
+
 // Generate new else label token
 int else_counter = 0;
 TOKEN* new_else() {
@@ -772,7 +893,7 @@ TOKEN* new_next() {
 
     TOKEN* next_token = (TOKEN*)malloc(sizeof(TOKEN));
     if (next_token==NULL) {
-        printf("ERROR: could not allocate memory for new else token\n");
+        printf("ERROR: could not allocate memory for new next token\n");
         exit(1);
     }
 

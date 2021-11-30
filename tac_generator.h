@@ -13,10 +13,11 @@ enum TAC_TYPE {
     LABEL_TAC_TYPE = 1,
     GOTO_TAC_TYPE = 2,
     OPERATION_TAC_TYPE = 3,
-    FUNCTION_START_TAC_TYPE = 4,
-    FUNCTION_END_TAC_TYPE = 5,
+    BLOCK_START_TAC_TYPE = 4,
+    BLOCK_END_TAC_TYPE = 5,
     FUNCTION_CALL_TAC_TYPE = 6,
-    IF_TAC_TYPE = 7
+    IF_TAC_TYPE = 7,
+    RETURN_TAC_TYPE = 8
 };
 
 enum OP_TYPE {
@@ -47,10 +48,10 @@ typedef struct tac_operation {
     TOKEN* dest;
 } TAC_OPERATION;
 
-typedef struct tac_function_delimiter {
+typedef struct tac_block_delimiter {
     TOKEN* name;
     int arity;
-} TAC_FUNCTION_DELIMITER;
+} TAC_BLOCK_DELIMITER;
 
 typedef struct tac_function_call {
     TOKEN* name;
@@ -68,7 +69,7 @@ typedef struct tac {
         TAC_LABEL tac_label;
         TAC_GOTO tac_goto;
         TAC_OPERATION tac_operation;
-        TAC_FUNCTION_DELIMITER tac_function_delimiter;
+        TAC_BLOCK_DELIMITER tac_block_delimiter;
         TAC_FUNCTION_CALL tac_function_call;
         TAC_IF tac_if;
     } v;
@@ -84,6 +85,8 @@ typedef struct basic_block {
 
 BASIC_BLOCK* generate_TAC(NODE* tree);
 void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
+void subdivide_basic_blocks(BASIC_BLOCK* root_BB);
+void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB);
 
 void variable_declaration_template(NODE* assignement_node, BASIC_BLOCK* current_BB);
 void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB, int is_declaration);
@@ -98,7 +101,6 @@ void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB);
 int function_call_argument_count_rec(NODE* current_node);
 void function_call_argument_buffer_rec(NODE* current_node, BASIC_BLOCK* current_BB, int arg_count);
 void return_template(NODE* return_node, BASIC_BLOCK* current_BB);
-TAC_FUNCTION_DELIMITER* get_basic_block_function_start(BASIC_BLOCK* current_BB);
 
 void if_template(NODE* if_node, BASIC_BLOCK* current_BB);
 void while_template(NODE* while_node, BASIC_BLOCK* current_BB);
@@ -109,6 +111,7 @@ void add_TAC(TAC* new_tac, BASIC_BLOCK* current_block);
 
 TOKEN* new_temporary_reg();
 TOKEN* new_argument_reg(int id);
+TOKEN* new_if();
 TOKEN* new_else();
 TOKEN* new_next();
 TOKEN* new_loop();
