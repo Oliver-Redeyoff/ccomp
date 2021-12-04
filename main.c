@@ -125,11 +125,19 @@ void print_tac(BASIC_BLOCK* current_BB) {
           break;
 
         case BLOCK_START_TAC_TYPE:
-          printf("block start %s %d\n", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          printf("block end \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
+            printf(" (\033[0;35m%s\033[0m)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          }
+          printf("\n");
           break;
 
         case BLOCK_END_TAC_TYPE:
-          printf("block end %s %d\n", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          printf("block end \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
+            printf(" (\033[0;35m%s\033[0m)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          }
+          printf("\n");
           break;
 
         case FUNCTION_CALL_TAC_TYPE:
@@ -214,6 +222,26 @@ void print_tac(BASIC_BLOCK* current_BB) {
 
 }
 
+void print_mips(MIPS_PROGRAM* program) {
+
+  MIPS_INSTR* current_instr = program->instructions;
+
+  while (1) {
+
+    if (current_instr == NULL) {
+      break;
+    } else {
+      printf("- %s\n", current_instr->instr_str);
+    }
+
+    current_instr = current_instr->next;
+
+  }
+
+  return;
+
+}
+
 
 //////////
 // Main //
@@ -285,10 +313,18 @@ int main(int argc, char** argv) {
 
   printf("--DEBUG START--\n\n");
   
-  generate_MIPS(root_BB);
+  MIPS_PROGRAM* program = generate_MIPS(root_BB);
   
   printf("\n--DEBUG END--\n");
   printf("\n\n");
+
+  printf("--RESULT START--\n");
+  
+  print_mips(program);
+  
+  printf("\n--RESULT END--\n");
+  printf("\n\n");
+
 
   return 0;
 

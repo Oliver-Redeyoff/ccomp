@@ -7,6 +7,8 @@
 
 TOKEN* return_reg_token;
 
+TOKEN* parent_block_token;
+
 // Entry point of TAC generation
 BASIC_BLOCK* generate_TAC(NODE* tree) {
 
@@ -21,27 +23,46 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
     return_reg_token->type = RETURN_REG_IDENTIFIER;
     return_reg_token->value = 0;
 
-    // create new tac for label to go at start of root block
-    TOKEN* label_token = (TOKEN*)malloc(sizeof(TOKEN));
-    label_token->type = IDENTIFIER;
-    label_token->lexeme = "premain";
-    TAC* label_tac = generate_label(label_token);
-    add_TAC(label_tac, root_Basic_Block);
+    // create new tac for start of global block
+    TOKEN* premain_token = (TOKEN*)malloc(sizeof(TOKEN));
+    premain_token->type = IDENTIFIER;
+    premain_token->lexeme = "premain";
 
-    TAC* current_TAC = root_Basic_Block->leader;
-    if (current_TAC == NULL) {
-        printf("Is null here as well 1\n");
-    }
+    TAC_BLOCK_DELIMITER* premain_declaration = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
+    premain_declaration->name = premain_token;
+    premain_declaration->arity = 0;
+    premain_declaration->parent_block_name = NULL;
+    // create new TAC for function block start indicator
+    TAC* premain_start_tac = (TAC*)malloc(sizeof(TAC));
+    premain_start_tac->type = BLOCK_START_TAC_TYPE;
+    premain_start_tac->v.tac_block_delimiter = *premain_declaration;
+    add_TAC(premain_start_tac, root_Basic_Block);
+
+    parent_block_token = premain_token;
 
     // add any necessary info in the pre_main block here
     TOKEN* main_token = (TOKEN*)malloc(sizeof(TOKEN));
     main_token->type = IDENTIFIER;
     main_token->lexeme = "main";
-    TAC* goto_main = generate_goto(main_token);
-    add_TAC(goto_main, root_Basic_Block);
+
+    // create new function call TAC
+    TAC_FUNCTION_CALL* tac_function_call = (TAC_FUNCTION_CALL*)malloc(sizeof(TAC_FUNCTION_CALL));
+    tac_function_call->name = main_token;
+    tac_function_call->arity = 0;
+    // create new TAC
+    TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+    new_tac->type = FUNCTION_CALL_TAC_TYPE;
+    new_tac->v.tac_function_call = *tac_function_call;
+    add_TAC(new_tac, root_Basic_Block);
     
     printf("Starting translating tac\n");
     map_to_TAC(tree, root_Basic_Block);
+
+    // create new TAC for end of global block
+    TAC* premain_end_tac = (TAC*)malloc(sizeof(TAC));
+    premain_end_tac->type = BLOCK_END_TAC_TYPE;
+    premain_end_tac->v.tac_block_delimiter = *premain_declaration;
+    add_TAC(premain_end_tac, root_Basic_Block);
 
     // divide basic blocks into more basic blocks if needed
     subdivide_basic_blocks(root_Basic_Block);
@@ -155,8 +176,6 @@ void subdivide_basic_blocks(BASIC_BLOCK* root_BB) {
 void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB) {
 
     BASIC_BLOCK* new_BB = insert_Basic_Block(current_BB);
-
-    new_BB->lexical_parent = current_BB;
 
     new_BB->leader = current_TAC->next;
     current_TAC->next = NULL;
@@ -394,24 +413,23 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
     // create new basic block
     BASIC_BLOCK* new_BB = append_Basic_Block(current_BB);
-    new_BB->lexical_parent = current_BB;
 
-    // get function name token and put it in label name token
     TOKEN* function_name_token = (TOKEN*)D_node->left->right->left->left;
-    TAC* label_tac = generate_label(function_name_token);
-    add_TAC(label_tac, new_BB);
 
     // put function name token and arity in function start TAC
     int function_arity = function_declaration_argument_count_rec(D_node->left->right->right);
     TAC_BLOCK_DELIMITER* tac_function_declaration = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_function_declaration->name = function_name_token;
     tac_function_declaration->arity = function_arity;
+    tac_function_declaration->parent_block_name = parent_block_token;
     // create new TAC for function block start indicator
     TAC* function_start_tac = (TAC*)malloc(sizeof(TAC));
     function_start_tac->type = BLOCK_START_TAC_TYPE;
     function_start_tac->v.tac_block_delimiter = *tac_function_declaration;
     add_TAC(function_start_tac, new_BB);
 
+    // update current parent block token
+    parent_block_token = function_name_token;
 
     // get arguments from registers and assign their value to argument variables
     if (D_node->left->right->right != NULL) {
@@ -426,6 +444,9 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
     function_end_tac->type = BLOCK_END_TAC_TYPE;
     function_end_tac->v.tac_block_delimiter = *tac_function_declaration;
     add_TAC(function_end_tac, new_BB);
+
+    // revert parent block name
+    parent_block_token = tac_function_declaration->parent_block_name;
 
     return;
 
@@ -613,11 +634,15 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_if_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_if_block_delimiter->name = if_label_token;
     tac_if_block_delimiter->arity = 0;
+    tac_if_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* if_block_start_tac = (TAC*)malloc(sizeof(TAC));
     if_block_start_tac->type = BLOCK_START_TAC_TYPE;
     if_block_start_tac->v.tac_block_delimiter = *tac_if_block_delimiter;
     add_TAC(if_block_start_tac, current_BB);
+
+    // update current parent block token
+    parent_block_token = if_label_token;
 
     // put if part bellow if statement
     if (if_node->right->type == ELSE) {
@@ -637,6 +662,9 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TAC* goto_next_tac_from_if = generate_goto(next_label_token);
     add_TAC(goto_next_tac_from_if, current_BB);
 
+    // revert parent block name
+    parent_block_token = tac_if_block_delimiter->parent_block_name;
+
 
     // put else label bellow if body
     TAC* else_label_tac = generate_label(else_label_token);
@@ -646,11 +674,15 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_else_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_else_block_delimiter->name = else_label_token;
     tac_else_block_delimiter->arity = 0;
+    tac_else_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* else_block_start_tac = (TAC*)malloc(sizeof(TAC));
     else_block_start_tac->type = BLOCK_START_TAC_TYPE;
     else_block_start_tac->v.tac_block_delimiter = *tac_else_block_delimiter;
     add_TAC(else_block_start_tac, current_BB);
+
+    // update current parent block token
+    parent_block_token = else_label_token;
 
     if (if_node->right->type == ELSE) {
         // map body of else into Basic Block
@@ -662,6 +694,9 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     else_block_end_tac->type = BLOCK_END_TAC_TYPE;
     else_block_end_tac->v.tac_block_delimiter = *tac_else_block_delimiter;
     add_TAC(else_block_end_tac, current_BB);
+
+    // revert parent block name
+    parent_block_token = tac_else_block_delimiter->parent_block_name;
 
     TAC* goto_next_tac_from_else = generate_goto(next_label_token);
     add_TAC(goto_next_tac_from_else, current_BB);
@@ -704,11 +739,15 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_block_delimiter->name = loop_token;
     tac_block_delimiter->arity = 0;
+    tac_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* block_start_tac = (TAC*)malloc(sizeof(TAC));
     block_start_tac->type = BLOCK_START_TAC_TYPE;
     block_start_tac->v.tac_block_delimiter = *tac_block_delimiter;
     add_TAC(block_start_tac, current_BB);
+
+    // update current parent block token
+    parent_block_token = loop_token;
 
     // add body of while block
     map_to_TAC(while_node->right, current_BB);
@@ -719,6 +758,8 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     block_end_tac->v.tac_block_delimiter = *tac_block_delimiter;
     add_TAC(block_end_tac, current_BB);
 
+    // revert parent block name
+    parent_block_token = tac_block_delimiter->parent_block_name;
 
     // add goto loop
     TAC* loop_goto = generate_goto(loop_token);

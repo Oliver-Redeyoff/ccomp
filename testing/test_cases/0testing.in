@@ -1,17 +1,11 @@
 int main(void) {
-    int x = 2;
-    if (x == 2) {
-        return 1;
-    } else {
-        return 2;
-    }
-
-    while (x != 4) {
-        x = x + 1;
-    }
+    int x = test(2);
     return x;
 }
 
 int test(int x) {
+    int test_inner(int y) {
+        return y;
+    }
     return x;
 }

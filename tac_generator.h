@@ -51,6 +51,7 @@ typedef struct tac_operation {
 typedef struct tac_block_delimiter {
     TOKEN* name;
     int arity;
+    TOKEN* parent_block_name;
 } TAC_BLOCK_DELIMITER;
 
 typedef struct tac_function_call {
@@ -79,7 +80,6 @@ typedef struct tac {
 typedef struct basic_block {
     TAC* leader;
     struct basic_block* next;
-    struct basic_block* lexical_parent;
 } BASIC_BLOCK;
 
 
