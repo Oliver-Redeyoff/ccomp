@@ -151,6 +151,9 @@ void subdivide_basic_blocks(BASIC_BLOCK* root_BB) {
                     && current_TAC->next->type == LABEL_TAC_TYPE) {
                 split_BB(current_TAC, current_BB);
             }
+            else if (current_TAC->type == FUNCTION_CALL_TAC_TYPE) {
+                split_BB(current_TAC, current_BB);
+            }
 
             if (current_TAC->next == NULL) {
                 break;

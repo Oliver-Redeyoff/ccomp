@@ -29,16 +29,10 @@ typedef struct local {
 
 typedef struct ar {
     TOKEN* block_name;
-    struct ar* fp;  // pointer to caller's Activation Record
-    int pc;         // caller's Program Counter
     struct ar* sl;  // pointer to lexical parent's Activation Record
     LOCAL* locals;  // pointer to first local of scope
+    struct ar* next;
 } AR;
-
-typedef struct blank_ar {
-    AR* activation_record;
-    struct blank_ar* next;
-} BLANK_AR;
 
 typedef struct mips_instr {
     char instr_str[500];
@@ -51,16 +45,19 @@ typedef struct mips_program {
 } MIPS_PROGRAM;
 
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root_BB);
-void blank_ARs_loop(AR* global_AR);
+void generate_ARs(AR* global_AR);
 void MIPS_loop(BASIC_BLOCK* root_BB, MIPS_PROGRAM* program);
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC);
 
+MIPS_INSTR* block_start_template(TAC* block_start_TAC);
 MIPS_INSTR* operation_template(TAC* operation_TAC);
 
 TAC* get_next_TAC(TAC* search_TAC);
-AR* get_blank_AR(TOKEN* search_token);
+char* get_register_name(TOKEN* register_token);
+AR* get_AR(TOKEN* search_token);
 
-void append_blank_AR(AR* new_AR);
+void append_AR(AR* new_AR);
+void add_local(LOCAL* new_local, AR* current_AR);
 void append_instr(MIPS_INSTR* new_instr, MIPS_PROGRAM* program);
 
 #endif

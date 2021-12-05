@@ -6,7 +6,7 @@
 #include "mips_generator.h"
 
 BASIC_BLOCK* root_BB;
-BLANK_AR* blank_ARs;
+AR* AR_list;
 
 // Entry point for MIPS generation
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
@@ -15,9 +15,10 @@ MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
 
     printf("starting generating MIPS\n");
 
-    // first generate blank ARs
+    // first generate ARs
     AR* global_AR = (AR*)malloc(sizeof(AR));
-    blank_ARs_loop(global_AR);
+    AR_list = global_AR;
+    generate_ARs(global_AR);
 
     // create new mips program
     MIPS_PROGRAM* program = (MIPS_PROGRAM*)malloc(sizeof(MIPS_PROGRAM));
@@ -30,7 +31,7 @@ MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
 
 
 // Generate blank activation records
-void blank_ARs_loop(AR* global_AR) {
+void generate_ARs(AR* global_AR) {
 
     TAC* current_TAC = get_next_TAC(NULL);
     AR* current_AR = global_AR;
@@ -41,23 +42,39 @@ void blank_ARs_loop(AR* global_AR) {
 
             // create new AR and put current AR as the lexical parent AR
             // set current_AR to this new one
-            printf("Generating new blank AR\n");
+            printf("New activation record\n");
             AR* new_AR = (AR*)malloc(sizeof(AR));
             new_AR->block_name = current_TAC->v.tac_block_delimiter.name;
-            new_AR->sl = get_blank_AR(current_TAC->v.tac_block_delimiter.parent_block_name);
-            append_blank_AR(new_AR);
+            new_AR->sl = NULL;
+            append_AR(new_AR);
             current_AR = new_AR;
 
         }
         else if (current_TAC->type == BLOCK_END_TAC_TYPE) {
 
             // set current_AR to lexical parent one
-            printf("End of block, back to parent block\n");
             current_AR = current_AR->sl;
 
         }
 
         // for any declaration, add that to the current_AR as a local
+        if (current_TAC->type == OPERATION_TAC_TYPE) {
+
+            TAC_OPERATION* operation = &current_TAC->v.tac_operation;
+
+            if (operation->is_declaration == 1) {
+                printf("New local\n");
+                // create int local
+                LOCAL_INT* new_int_local = (LOCAL_INT*)malloc(sizeof(LOCAL_INT));
+                new_int_local->name = operation->dest;
+                // create new local
+                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
+                new_local->type = INT_LOCAL_TYPE;
+                new_local->v.local_int = new_int_local;
+                add_local(new_local, current_AR);
+            }
+
+        }
 
 
         current_TAC = get_next_TAC(current_TAC);
@@ -95,6 +112,11 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
     switch (tac_type) {
 
+        case BLOCK_START_TAC_TYPE: {
+            new_instr = block_start_template(current_TAC);
+            break;
+        }
+
         case LABEL_TAC_TYPE: {
             TAC_LABEL* label_tac = &current_TAC->v.tac_label;
             sprintf(new_instr->instr_str, "%s:", label_tac->name->lexeme);
@@ -103,12 +125,19 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
         case GOTO_TAC_TYPE: {
             TAC_GOTO* goto_tac = &current_TAC->v.tac_goto;
-            sprintf(new_instr->instr_str, "    j %s\n", goto_tac->name->lexeme);
+            sprintf(new_instr->instr_str, " j %s\n", goto_tac->name->lexeme);
+            break;
+        }
+
+        case FUNCTION_CALL_TAC_TYPE: {
+            TAC_FUNCTION_CALL* function_call_tac = &current_TAC->v.tac_function_call;
+            sprintf(new_instr->instr_str, " jal %s\n", function_call_tac->name->lexeme);
             break;
         }
 
         case OPERATION_TAC_TYPE: 
-            operation_template(current_TAC);
+            new_instr = operation_template(current_TAC);
+            break;
         
         default:
             break;
@@ -119,10 +148,48 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
 }
 
+// map start of block to mips
+MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
+
+    MIPS_INSTR* label_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+
+    // get block's AR
+    AR* block_AR = get_AR(block_start_TAC->v.tac_block_delimiter.name);
+
+    sprintf(label_instr->instr_str, "%s:", block_start_TAC->v.tac_block_delimiter.name->lexeme);
+
+    return label_instr;
+
+}
+
 // map operation tac to mips
 MIPS_INSTR* operation_template(TAC* operation_TAC) {
 
     MIPS_INSTR* new_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+
+    TAC_OPERATION* operation = &operation_TAC->v.tac_operation;
+    TOKEN* dest = operation->dest;
+    TOKEN* src1 = operation->src1;
+    TOKEN* src2 = operation->src2;
+
+    switch (operation->op) {
+
+        case NONE_OPERATION:
+            if ((dest->type == TEMPORARY_REG_IDENTIFIER || dest->type == ARGUMENT_REG_IDENTIFIER || dest->type == RETURN_REG_IDENTIFIER)
+                && src1->type == CONSTANT) {
+                sprintf(new_instr->instr_str, " li %s, %d", get_register_name(dest), src1->value);
+                break;
+            }
+            if ((dest->type == TEMPORARY_REG_IDENTIFIER || dest->type == ARGUMENT_REG_IDENTIFIER || dest->type == RETURN_REG_IDENTIFIER)
+                && (src1->type == TEMPORARY_REG_IDENTIFIER || src1->type == ARGUMENT_REG_IDENTIFIER || src1->type == RETURN_REG_IDENTIFIER)) {
+                sprintf(new_instr->instr_str, " move %s, %s", get_register_name(dest), get_register_name(src1));
+            }
+            break;
+        
+        default:
+            break;
+
+    }
 
     return new_instr;
 
@@ -131,8 +198,6 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
 
 // Get next tac
 TAC* get_next_TAC(TAC* search_TAC) {
-
-    printf("Getting next tac\n");
 
     BASIC_BLOCK* current_BB = root_BB;
     TAC* current_TAC = current_BB->leader;
@@ -176,21 +241,46 @@ TAC* get_next_TAC(TAC* search_TAC) {
 
 }
 
-// Get blank_AR with token
-AR* get_blank_AR(TOKEN* search_token) {
+// gets string for name of a register in MIPS
+char* get_register_name(TOKEN* register_token) {
+    
+    char register_name[5];
 
-    BLANK_AR* current_blank_AR = blank_ARs;
+    if (register_token->type == TEMPORARY_REG_IDENTIFIER) {
+        register_name[0] = '$';
+        register_name[1] = 't';
+        register_name[2] = register_token->value+'0';
+    }
+    else if (register_token->type == ARGUMENT_REG_IDENTIFIER) {
+        register_name[0] = '$';
+        register_name[1] = 'a';
+        register_name[2] = register_token->value+'0';
+    }
+    else if (register_token->type == RETURN_REG_IDENTIFIER) {
+        register_name[0] = '$';
+        register_name[1] = 's';
+        register_name[2] = register_token->value+'0';
+    }
+
+    return strdup(register_name);
+
+}
+
+// Lookup ar using token
+AR* get_AR(TOKEN* search_token) {
+
+    AR* current_AR = AR_list;
 
     while (1) {
-        
-        if (current_blank_AR == NULL) {
-            break;
-        } 
-        else if (current_blank_AR->activation_record->block_name == search_token) {
-            return current_blank_AR->activation_record;
+
+        if (current_AR == NULL) {
+            return NULL;
         }
-        else {
-            current_blank_AR = current_blank_AR->next;
+
+        if (current_AR->block_name == search_token) {
+            return current_AR;
+        } else {
+            current_AR = current_AR->next;
         }
 
     }
@@ -200,20 +290,46 @@ AR* get_blank_AR(TOKEN* search_token) {
 }
 
 // Add a new blank AR to list of blank ARs
-void append_blank_AR(AR* new_AR) {
+void append_AR(AR* new_AR) {
 
-    BLANK_AR* new_blank_AR = (BLANK_AR*)malloc(sizeof(BLANK_AR));
-    new_blank_AR->activation_record = new_AR;
+    if (AR_list == NULL) {
+        AR_list = new_AR;
+    }
 
-    BLANK_AR* current_blank_AR = blank_ARs;
+    AR* current_AR = AR_list;
 
     while (1) {
 
-        if (current_blank_AR == NULL) {
-            current_blank_AR = new_blank_AR;
+        if (current_AR->next == NULL) {
+            current_AR->next = new_AR;
             break;
         } else {
-            current_blank_AR = current_blank_AR->next;
+            current_AR = current_AR->next;
+        }
+
+    }
+
+    return;
+
+}
+
+// Add local to activation record
+void add_local(LOCAL* new_local, AR* current_AR) {
+
+    LOCAL* current_local = current_AR->locals;
+
+    if (current_local == NULL) {
+        current_AR->locals = new_local;
+        return;
+    }
+
+    while (1) {
+
+        if (current_local->next == NULL) {
+            current_local->next = new_local;
+            break;
+        } else {
+            current_local = current_local->next;
         }
 
     }
