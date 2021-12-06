@@ -32,6 +32,12 @@ enum OP_TYPE {
     LESS_EQUAL_OPERATION = 8
 };
 
+enum BLOCK_TYPE {
+    FUNCTION_BLOCK_TYPE = 1,
+    IF_BLOCK_TYPE = 2,
+    WHILE_BLOCK_TYPE = 3
+};
+
 typedef struct tac_label {
     TOKEN* name;
 } TAC_LABEL;
@@ -49,6 +55,7 @@ typedef struct tac_operation {
 } TAC_OPERATION;
 
 typedef struct tac_block_delimiter {
+    int block_type;
     TOKEN* name;
     int arity;
     TOKEN* parent_block_name;
@@ -84,6 +91,7 @@ typedef struct basic_block {
 
 
 BASIC_BLOCK* generate_TAC(NODE* tree);
+TOKEN* find_main_token(BASIC_BLOCK* root_BB);
 void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
 void subdivide_basic_blocks(BASIC_BLOCK* root_BB);
 void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB);

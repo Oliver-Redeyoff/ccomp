@@ -125,7 +125,7 @@ void print_tac(BASIC_BLOCK* current_BB) {
           break;
 
         case BLOCK_START_TAC_TYPE:
-          printf("block end \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          printf("block %d start \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
           if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
             printf(" (\033[0;35m%s\033[0m)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
           }
@@ -133,7 +133,7 @@ void print_tac(BASIC_BLOCK* current_BB) {
           break;
 
         case BLOCK_END_TAC_TYPE:
-          printf("block end \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          printf("block %d end \033[0;35m%s\033[0m %d", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
           if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
             printf(" (\033[0;35m%s\033[0m)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
           }
@@ -198,6 +198,7 @@ void print_tac(BASIC_BLOCK* current_BB) {
         }
         
         default:
+          printf("UNKNOWN TAC\n");
           break;
 
       }
@@ -208,6 +209,7 @@ void print_tac(BASIC_BLOCK* current_BB) {
       } else {
         current_TAC = current_TAC->next;
       }
+
     }
 
     // move onto next basic block
@@ -225,6 +227,8 @@ void print_tac(BASIC_BLOCK* current_BB) {
 void print_mips(MIPS_PROGRAM* program) {
 
   MIPS_INSTR* current_instr = program->instructions;
+
+  printf("\n");
 
   while (1) {
 

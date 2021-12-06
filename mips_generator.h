@@ -15,7 +15,7 @@ typedef struct local_int {
 
 typedef struct local_closure {
     TOKEN* name;
-    struct ar* ar;
+    struct ar* sl; // this is link to lexical parent's AR
 } LOCAL_CLOSURE;
 
 typedef struct local {
@@ -29,7 +29,7 @@ typedef struct local {
 
 typedef struct ar {
     TOKEN* block_name;
-    struct ar* sl;  // pointer to lexical parent's Activation Record
+    struct ar* lexical_parent_AR;  // pointer to lexical parent's Activation Record
     LOCAL* locals;  // pointer to first local of scope
     struct ar* next;
 } AR;
@@ -45,19 +45,27 @@ typedef struct mips_program {
 } MIPS_PROGRAM;
 
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root_BB);
-void generate_ARs(AR* global_AR);
 void MIPS_loop(BASIC_BLOCK* root_BB, MIPS_PROGRAM* program);
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC);
 
 MIPS_INSTR* block_start_template(TAC* block_start_TAC);
+MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC);
+MIPS_INSTR* return_MIPS_template(TAC* return_TAC);
 MIPS_INSTR* operation_template(TAC* operation_TAC);
 
+AR* generate_AR(TAC* block_start_TAC);
+AR* get_AR(TOKEN* search_token);
+int get_AR_size(AR* activation_record);
+AR* get_containing_AR(TAC* search_TAC);
+AR* get_containing_function_AR(TAC* search_TAC);
+MIPS_INSTR* get_AR_address(AR* search_AR, AR* initial_AR);
+MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR);
 TAC* get_next_TAC(TAC* search_TAC);
 char* get_register_name(TOKEN* register_token);
-AR* get_AR(TOKEN* search_token);
 
 void append_AR(AR* new_AR);
 void add_local(LOCAL* new_local, AR* current_AR);
-void append_instr(MIPS_INSTR* new_instr, MIPS_PROGRAM* program);
+void append_instr(MIPS_INSTR* new_instr, MIPS_INSTR* instr_chain);
+void append_instr_to_program(MIPS_INSTR* new_instr, MIPS_PROGRAM* program);
 
 #endif
