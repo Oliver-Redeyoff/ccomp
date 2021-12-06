@@ -1,7 +1,11 @@
 int main(void) {
-    int x = 2;
-    if (x == 2) {
-        return x;
-    }
+    int x = test(1);
     return x;
+}
+
+int test(int x) {
+    if (x == 2) {
+        return 0;
+    }
+    return 1;
 }

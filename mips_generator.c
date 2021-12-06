@@ -199,6 +199,7 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     TAC_FUNCTION_CALL* function_call_tac = &function_call_TAC->v.tac_function_call;
 
     MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(initial_instr->instr_str, "\n  # loading function's lexical scope into it's first argument");
 
     // get address in memory of the closure stored in the activation record
     printf("Searching for address of closure local %s\n", function_call_tac->name->lexeme);
@@ -233,6 +234,15 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
     MIPS_INSTR* get_addr_intr = get_AR_address(containing_function_AR, containing_AR);
     append_instr(get_addr_intr, initial_instr);
 
+    // restore frame pointer to the caller's fp
+    MIPS_INSTR* restore_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($t0)");
+    append_instr(restore_fp_instr, initial_instr);
+
+    // jump to the return address
+    MIPS_INSTR* jump_return_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(jump_return_instr->instr_str, "  jr 4($t0)");
+    append_instr(jump_return_instr, initial_instr);
 
     return initial_instr;
 

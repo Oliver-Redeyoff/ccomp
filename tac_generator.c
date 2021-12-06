@@ -186,19 +186,14 @@ void subdivide_basic_blocks(BASIC_BLOCK* root_BB) {
                 break;
             }
 
-            printf("Looking at new tac\n");
-
             if (current_TAC->type == IF_TAC_TYPE) {
-                printf("If tac\n");
-                //split_BB(current_TAC, current_BB);
-            }
-            if (current_TAC->next != NULL && current_TAC->next->type == LABEL_TAC_TYPE) {
-                printf("Label tac\n");
                 split_BB(current_TAC, current_BB);
             }
-            if (current_TAC->type == FUNCTION_CALL_TAC_TYPE) {
-                printf("Function call tac\n");
-                //split_BB(current_TAC, current_BB);
+            else if (current_TAC->next != NULL && current_TAC->next->type == LABEL_TAC_TYPE) {
+                split_BB(current_TAC, current_BB);
+            }
+            else if (current_TAC->type == FUNCTION_CALL_TAC_TYPE) {
+                split_BB(current_TAC, current_BB);
             }
 
             if (current_TAC->next == NULL) {
@@ -492,6 +487,7 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
     function_start_tac->v.tac_block_delimiter = *tac_function_declaration;
     add_TAC(function_start_tac, new_BB);
 
+
     // update current parent block token
     parent_block_token = function_name_token;
 
@@ -518,6 +514,10 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
 // Recurse through function declaration and get argument count
 int function_declaration_argument_count_rec(NODE* current_node) {
+
+    if (current_node == NULL) {
+        return 0;
+    }
 
     if (current_node->type == ',') {
         // recurse over left and right
@@ -591,6 +591,10 @@ void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB) {
 
 // Recurse through function call to get count of arguments being passed
 int function_call_argument_count_rec(NODE* current_node) {
+
+    if (current_node == NULL) {
+        return 0;
+    }
 
     if (current_node->type == ',') {
         // recurse over left and right
@@ -874,11 +878,11 @@ BASIC_BLOCK* insert_Basic_Block(BASIC_BLOCK* current_BB) {
     }
 
     if (current_BB->next == NULL) {
-        current_BB->next = current_BB;
-    } else {
-        BASIC_BLOCK* old = current_BB->next;
         current_BB->next = new_Basic_Block;
-        new_Basic_Block->next = old;
+    } else {
+        BASIC_BLOCK* old_next = current_BB->next;
+        current_BB->next = new_Basic_Block;
+        new_Basic_Block->next = old_next;
     }
 
     return new_Basic_Block;
