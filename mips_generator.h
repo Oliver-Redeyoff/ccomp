@@ -9,21 +9,9 @@ enum LOCAl_TYPE {
     CLOSURE_LOCAL_TYPE = 2
 };
 
-typedef struct local_int {
-    TOKEN* name;
-} LOCAL_INT;
-
-typedef struct local_closure {
-    TOKEN* name;
-    struct ar* sl; // this is link to lexical parent's AR
-} LOCAL_CLOSURE;
-
 typedef struct local {
     int type;
-    union {
-        LOCAL_INT* local_int;
-        LOCAL_CLOSURE* local_closure;
-    } v;
+    TOKEN* name;
     struct local* next;
 } LOCAL;
 
@@ -60,6 +48,7 @@ AR* get_containing_AR(TAC* search_TAC);
 AR* get_containing_function_AR(TAC* search_TAC);
 MIPS_INSTR* get_AR_address(AR* search_AR, AR* initial_AR);
 MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR);
+int get_local_type(TOKEN* search_token, AR* initial_AR);
 TAC* get_next_TAC(TAC* search_TAC);
 int is_register(TOKEN* token);
 char* get_register_name(TOKEN* register_token);

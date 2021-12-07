@@ -68,16 +68,15 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
         case GOTO_TAC_TYPE: {
             TAC_GOTO* goto_tac = &current_TAC->v.tac_goto;
-            sprintf(new_instr->instr_str, "  j %s\n", goto_tac->name->lexeme);
+            sprintf(new_instr->instr_str, "  j %s", goto_tac->name->lexeme);
             break;
         }
 
         case IF_TAC_TYPE: {
             TAC_IF* if_tac = &current_TAC->v.tac_if;
-            sprintf(new_instr->instr_str, "  beq %s, 1, %s\n", get_register_name(if_tac->condition_result), if_tac->jump_label->lexeme);
+            sprintf(new_instr->instr_str, "  beq %s, 1, %s", get_register_name(if_tac->condition_result), if_tac->jump_label->lexeme);
             break;
         }
-
 
         case FUNCTION_CALL_TAC_TYPE:
             new_instr = function_call_MIPS_template(current_TAC);
@@ -90,6 +89,14 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
         case OPERATION_TAC_TYPE: 
             new_instr = operation_template(current_TAC);
             break;
+
+        case EXIT_PROGRAM_TAC_TYPE: {
+            sprintf(new_instr->instr_str, "  li $v0, 10");
+            MIPS_INSTR* exit_syscall_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+            sprintf(exit_syscall_instr->instr_str, "  syscall");
+            append_instr(exit_syscall_instr, new_instr);
+            break;
+        }
         
         default:
             break;
@@ -130,8 +137,13 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
     append_instr(sbreak_argument_instr, initial_instr);
 
     // sbreak syscall 
+    MIPS_INSTR* load_sbreak_code_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(load_sbreak_code_instr->instr_str, "  li $v0, 9");
+    append_instr(load_sbreak_code_instr, initial_instr);
+
+    // sbreak syscall 
     MIPS_INSTR* sbreak_syscall_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(sbreak_syscall_instr->instr_str, "  syscall sbrk");
+    sprintf(sbreak_syscall_instr->instr_str, "  syscall");
     append_instr(sbreak_syscall_instr, initial_instr);
 
     // put caller's AR in new AR
@@ -183,7 +195,7 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
             // second part of closure is adress of label
             // first put address to label in register
             MIPS_INSTR* instantiate_closure_label_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_closure_label_instr_1->instr_str, "  la $t0, %s", current_local->v.local_closure->name->lexeme);
+            sprintf(instantiate_closure_label_instr_1->instr_str, "  la $t0, %s", current_local->name->lexeme);
             append_instr(instantiate_closure_label_instr_1, initial_instr);
             // then store value of that register in memory
             MIPS_INSTR* instantiate_closure_label_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
@@ -207,7 +219,7 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     TAC_FUNCTION_CALL* function_call_tac = &function_call_TAC->v.tac_function_call;
 
     MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(initial_instr->instr_str, "  # loading function's lexical scope into it's first argument");
+    sprintf(initial_instr->instr_str, "  # calling function, loading it's lexical scope as first argument");
 
     // get address in memory of the closure stored in the activation record
     printf("Searching for address of closure local %s\n", function_call_tac->name->lexeme);
@@ -220,9 +232,14 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     sprintf(lexical_parent_arg_instr->instr_str, "  lw $a0, 0($t0)");
     append_instr(lexical_parent_arg_instr, initial_instr);
 
-    // add jump and link
+    // load address of closure to jump to into register t0
+    MIPS_INSTR* load_jump_address_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(load_jump_address_instr->instr_str, "  lw $t0, 4($t0)");
+    append_instr(load_jump_address_instr, initial_instr);
+
+    // add jump and link to address store in register t0
     MIPS_INSTR* jump_link_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(jump_link_instr->instr_str, "  jal %s", function_call_tac->name->lexeme);
+    sprintf(jump_link_instr->instr_str, "  jr $t0");
     append_instr(jump_link_instr, initial_instr);
 
     return initial_instr;
@@ -278,7 +295,7 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
             if (is_register(dest) == 1 && is_register(src1) == 1) {
                 sprintf(new_instr->instr_str, "  move %s, %s", get_register_name(dest), get_register_name(src1));
             }
-            // load memory address into register
+            // load local into register
             if (is_register(dest) == 1 && src1->type == IDENTIFIER) {
                 sprintf(new_instr->instr_str, "  # load memory address into register");
                 // get AR to start looking in
@@ -287,9 +304,17 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
                 MIPS_INSTR* load_local_addr_instr = get_local_address(src1, current_AR);
                 append_instr(load_local_addr_instr, new_instr);
                 // load value at address into destination register
-                MIPS_INSTR* load_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-                sprintf(load_local_value_instr->instr_str, "  lw %s, 0($t0)", get_register_name(dest));
-                append_instr(load_local_value_instr, new_instr);
+                int local_type = get_local_type(src1, current_AR);
+                if (local_type == INT_LOCAL_TYPE) {
+                    MIPS_INSTR* load_int_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(load_int_local_value_instr->instr_str, "  lw %s, 0($t0)", get_register_name(dest));
+                    append_instr(load_int_local_value_instr, new_instr);
+                }
+                else if (local_type == CLOSURE_LOCAL_TYPE) {
+                    MIPS_INSTR* load_closure_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(load_closure_local_value_instr->instr_str, "  la %s, 0($t0)", get_register_name(dest));
+                    append_instr(load_closure_local_value_instr, new_instr);
+                }
             }
             // store register value into memory address
             if (dest->type == IDENTIFIER && is_register(src1)) {
@@ -297,12 +322,37 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
                 // get AR to start looking in
                 AR* current_AR = get_containing_AR(operation_TAC);
                 // load address of local in $t0
-                MIPS_INSTR* load_local_addr_instr = get_local_address(dest, current_AR);
-                append_instr(load_local_addr_instr, new_instr);
+                MIPS_INSTR* store_local_addr_instr = get_local_address(dest, current_AR);
+                append_instr(store_local_addr_instr, new_instr);
                 // store value of register into memory address
-                MIPS_INSTR* load_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-                sprintf(load_local_value_instr->instr_str, "  sw %s, 0($t0)", get_register_name(src1));
-                append_instr(load_local_value_instr, new_instr);
+                int local_type = get_local_type(dest, current_AR);
+                if (local_type == INT_LOCAL_TYPE) {
+                    MIPS_INSTR* store_int_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(store_int_local_value_instr->instr_str, "  sw %s, 0($t0)", get_register_name(src1));
+                    append_instr(store_int_local_value_instr, new_instr);
+                }
+                else if (local_type == CLOSURE_LOCAL_TYPE) {
+                    // register stores a pointer to the closure, so need to load that closure first
+                    // load first word
+                    MIPS_INSTR* load_closure_local_value_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(load_closure_local_value_instr_1->instr_str, "  lw $v0, 0(%s)", get_register_name(src1));
+                    append_instr(load_closure_local_value_instr_1, new_instr);
+                    // store first word
+                    MIPS_INSTR* store_closure_local_value_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(store_closure_local_value_instr_1->instr_str, "  sw $v0, 0($t0)");
+                    append_instr(store_closure_local_value_instr_1, new_instr);
+                    // load second word
+                    MIPS_INSTR* load_closure_local_value_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(load_closure_local_value_instr_2->instr_str, "  lw $v0, 4(%s)", get_register_name(src1));
+                    append_instr(load_closure_local_value_instr_2, new_instr);
+                    // store second word
+                    MIPS_INSTR* store_closure_local_value_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                    sprintf(store_closure_local_value_instr_2->instr_str, "  sw $v0, 4($t0)");
+                    append_instr(store_closure_local_value_instr_2, new_instr);
+                }
+                else {
+                    printf("EROOR : NO TYPE\n");
+                }
             }
             break;
 
@@ -424,14 +474,18 @@ AR* generate_AR(TAC* block_start_TAC) {
 
             TAC_OPERATION* operation = &current_TAC->v.tac_operation;
 
-            if (operation->is_declaration == 1) {
-                // create int local
-                LOCAL_INT* new_int_local = (LOCAL_INT*)malloc(sizeof(LOCAL_INT));
-                new_int_local->name = operation->dest;
+            if (operation->assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
                 // create new local
                 LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
                 new_local->type = INT_LOCAL_TYPE;
-                new_local->v.local_int = new_int_local;
+                new_local->name = operation->dest;
+                add_local(new_local, new_AR);
+            }
+            else if (operation->assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
+                // create new local
+                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
+                new_local->type = CLOSURE_LOCAL_TYPE;
+                new_local->name = operation->dest;
                 add_local(new_local, new_AR);
             }
 
@@ -452,13 +506,10 @@ AR* generate_AR(TAC* block_start_TAC) {
         if (current_TAC->type == BLOCK_START_TAC_TYPE && current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
             
             if (current_TAC->v.tac_block_delimiter.parent_block_name == AR_block_name) {
-                // create int local
-                LOCAL_CLOSURE* new_closure_local = (LOCAL_CLOSURE*)malloc(sizeof(LOCAL_CLOSURE));
-                new_closure_local->name = current_TAC->v.tac_block_delimiter.name;
                 // create new local
                 LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
                 new_local->type = CLOSURE_LOCAL_TYPE;
-                new_local->v.local_closure = new_closure_local;
+                new_local->name = current_TAC->v.tac_block_delimiter.name;
                 add_local(new_local, new_AR);
             }
 
@@ -638,28 +689,19 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
                 break;
             }
 
-            if (current_local->type == INT_LOCAL_TYPE) {
-                printf("Looking at int local %s\n", current_local->v.local_int->name->lexeme);
-                if (current_local->v.local_int->name == search_token) {
-                    MIPS_INSTR* get_from_memory_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-                    printf("Found local\n\n");
-                    sprintf(get_from_memory_instr->instr_str, "  la $t0, %d($t0)", current_index);
-                    append_instr(get_from_memory_instr, initial_instr);
-                    return initial_instr;
-                }
-                current_index += 4;
+            printf("Looking at int local %s\n", current_local->name->lexeme);
+            if (current_local->name == search_token) {
+                MIPS_INSTR* get_from_memory_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                printf("Found local\n\n");
+                sprintf(get_from_memory_instr->instr_str, "  la $t0, %d($t0)", current_index);
+                append_instr(get_from_memory_instr, initial_instr);
+                return initial_instr;
             }
-            else if (current_local->type == CLOSURE_LOCAL_TYPE) {
-                printf("d2\n");
-                printf("Looking at closure local %s\n", current_local->v.local_closure->name->lexeme);
-                if (current_local->v.local_closure->name == search_token) {
-                    printf("Found local\n\n");
-                    MIPS_INSTR* get_from_memory_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-                    sprintf(get_from_memory_instr->instr_str, "  la $t0, %d($t0)", current_index);
-                    append_instr(get_from_memory_instr, initial_instr);
-                    return initial_instr;
-                }
+
+            if (current_local->type == CLOSURE_LOCAL_TYPE) {
                 current_index += 8;
+            } else {
+                current_index += 4;
             }
 
             if (current_local->next == NULL) {
@@ -684,6 +726,46 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
 
     printf("Not found local\n\n");
     return initial_instr;
+
+}
+
+// Get type of local
+int get_local_type(TOKEN* search_token, AR* initial_AR) {
+
+    AR* current_AR = initial_AR;
+    LOCAL* current_local = NULL;
+
+    while (1) {
+
+        current_local = current_AR->locals;
+
+        while (1) {
+
+            if (current_local == NULL) {
+                break;
+            }
+
+            if (current_local->name == search_token) {
+                return current_local->type;
+            }
+
+            if (current_local->next == NULL) {
+                break;
+            } else {
+                current_local = current_local->next;
+            }
+
+        }
+
+        if (current_AR->lexical_parent_AR == NULL) {
+            break;
+        } else {
+            current_AR = current_AR->lexical_parent_AR;
+        }
+
+    }
+
+    return 0;
 
 }
 

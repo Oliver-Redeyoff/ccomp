@@ -17,7 +17,8 @@ enum TAC_TYPE {
     BLOCK_END_TAC_TYPE = 5,
     FUNCTION_CALL_TAC_TYPE = 6,
     IF_TAC_TYPE = 7,
-    RETURN_TAC_TYPE = 8
+    RETURN_TAC_TYPE = 8,
+    EXIT_PROGRAM_TAC_TYPE = 9
 };
 
 enum OP_TYPE {
@@ -41,6 +42,12 @@ enum BLOCK_TYPE {
     WHILE_BLOCK_TYPE = 3
 };
 
+enum ASSIGNEMENT_TYPE {
+    NOT_DECLARATION_ASSIGNEMENT_TYPE = 0,
+    INT_DECLARATION_ASSIGNEMENT_TYPE = 1,
+    CLOSURE_DECLARATION_ASSIGNEMENT_TYPE =2
+};
+
 typedef struct tac_label {
     TOKEN* name;
 } TAC_LABEL;
@@ -50,7 +57,7 @@ typedef struct tac_goto {
 } TAC_GOTO;
 
 typedef struct tac_operation {
-    int is_declaration;
+    int assignement_type;
     int op;
     TOKEN* src1;
     TOKEN* src2;

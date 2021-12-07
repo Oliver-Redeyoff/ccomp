@@ -159,6 +159,10 @@ void print_tac(BASIC_BLOCK* current_BB) {
           printf("return\n");
           break;
 
+        case EXIT_PROGRAM_TAC_TYPE:
+          printf("exit\n");
+          break;
+
         case OPERATION_TAC_TYPE: {
           TAC_OPERATION operation = current_TAC->v.tac_operation;
           char* destination;
@@ -188,8 +192,11 @@ void print_tac(BASIC_BLOCK* current_BB) {
             else if (operation.src2->type == CONSTANT) { printf("%d", operation.src2->value); }
           }
 
-          if (operation.is_declaration == 1) {
-            printf(" (declaration) ");
+          if (operation.assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
+            printf(" (int variable declaration) ");
+          }
+          else if (operation.assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
+            printf(" (closure variable declaration) ");
           }
 
           printf("\n");

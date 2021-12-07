@@ -1,9 +1,12 @@
 int main(void) {
-    int x = 0;
+    function x = test();
 
-    while (x < 4) {
-        x = x + 1;
+    return x();
+}
+
+function test() {
+    function test_inner() {
+        return 2;
     }
-
-    return 1;
+    return test_inner;
 }

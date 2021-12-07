@@ -58,6 +58,11 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
     add_TAC(new_tac, root_Basic_Block);
 
     // create new TAC for end of global block
+    TAC* program_end_tac = (TAC*)malloc(sizeof(TAC));
+    program_end_tac->type = EXIT_PROGRAM_TAC_TYPE;
+    add_TAC(program_end_tac, root_Basic_Block);
+
+    // create new TAC for end of global block
     TAC* premain_end_tac = (TAC*)malloc(sizeof(TAC));
     premain_end_tac->type = BLOCK_END_TAC_TYPE;
     premain_end_tac->v.tac_block_delimiter = *premain_declaration;
@@ -232,7 +237,17 @@ void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB) {
 // Gets the result of the declaration expression and then call variable_assignement_rec
 void variable_declaration_template(NODE* assignement_node, BASIC_BLOCK* current_BB) {
 
+    int declaration_type;
     TOKEN* result_temporary = NULL;
+
+    TOKEN* declarartion_type_token = (TOKEN*)assignement_node->left->left;
+    // get the type of this declaration
+    if (strcmp(declarartion_type_token->lexeme, "function") == 0) {
+        declaration_type = CLOSURE_DECLARATION_ASSIGNEMENT_TYPE;
+    }
+    else if (strcmp(declarartion_type_token->lexeme, "int") == 0) {
+        declaration_type = INT_DECLARATION_ASSIGNEMENT_TYPE;
+    }
 
     // map the expression to TAC and use that to assign values to variables
     if (assignement_node->right->type == '=') {
@@ -242,14 +257,14 @@ void variable_declaration_template(NODE* assignement_node, BASIC_BLOCK* current_
         result_temporary = expression_template(assignement_node->right->right->right, current_BB);
     }
 
-    variable_assignement_rec(assignement_node->right, result_temporary, current_BB, 1);
+    variable_assignement_rec(assignement_node->right, result_temporary, current_BB, declaration_type);
 
     return;
 
 }
 
 // Recurses through tree to get identifiers to assign value to, and does so
-void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB, int is_declaration) {
+void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB, int assignement_type) {
 
     TOKEN* variable_token = NULL;
 
@@ -257,8 +272,8 @@ void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC
         variable_token = (TOKEN*)current_node->left->left;
     }
     else if (current_node->type == ',') {
-        variable_assignement_rec(current_node->left, result_temporary, current_BB, is_declaration);
-        variable_assignement_rec(current_node->right, result_temporary, current_BB, is_declaration);
+        variable_assignement_rec(current_node->left, result_temporary, current_BB, assignement_type);
+        variable_assignement_rec(current_node->right, result_temporary, current_BB, assignement_type);
     }
     else if (current_node->type == LEAF) {
         variable_token = (TOKEN*)current_node->left;
@@ -268,7 +283,7 @@ void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC
     if (variable_token != NULL) {
         // create new operation tac
         TAC_OPERATION* tac_operation = malloc(sizeof(TAC_OPERATION));
-        tac_operation->is_declaration = is_declaration;
+        tac_operation->assignement_type = assignement_type;
         tac_operation->op = NONE_OPERATION;
         tac_operation->dest = variable_token;
         tac_operation->src1 = result_temporary;
@@ -300,7 +315,7 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
             TOKEN* dest_token = new_temporary_reg();
             // new operation TAC
             TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-            tac_operation->is_declaration = 0;
+            tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
             tac_operation->op = NONE_OPERATION;
             tac_operation->dest = dest_token;
             tac_operation->src1 = identifier_token;
@@ -400,7 +415,7 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
             TOKEN* dest_token = new_temporary_reg();
             // new operation TAC
             TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-            tac_operation->is_declaration = 0;
+            tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
             tac_operation->op = NONE_OPERATION;
             tac_operation->dest = dest_token;
             tac_operation->src1 = return_reg_token;
@@ -425,7 +440,7 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
 
         // new operation TAC
         TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-        tac_operation->is_declaration = 0;
+        tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
         tac_operation->op = operation;
         tac_operation->dest = dest_token;
         tac_operation->src1 = left_token;
@@ -457,7 +472,7 @@ TOKEN* generate_false_check(TOKEN* value_token, BASIC_BLOCK* current_BB) {
 
     // new operation TAC
     TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-    tac_operation->is_declaration = 0;
+    tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
     tac_operation->op = EQUAL_OPERATION;
     tac_operation->dest = result_token;
     tac_operation->src1 = value_token;
@@ -557,7 +572,7 @@ void function_declaration_argument_retrival_rec(NODE* current_node, BASIC_BLOCK*
 
         // new operation TAC
         TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-        tac_operation->is_declaration = 1;
+        tac_operation->assignement_type = INT_DECLARATION_ASSIGNEMENT_TYPE;
         tac_operation->op = NONE_OPERATION;
         tac_operation->dest = argument_variable_token;
         tac_operation->src1 = argument_reg_token;
@@ -632,7 +647,7 @@ void function_call_argument_buffer_rec(NODE* current_node, BASIC_BLOCK* current_
 
         // new operation TAC
         TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-        tac_operation->is_declaration = 0;
+        tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
         tac_operation->op = NONE_OPERATION;
         tac_operation->dest = argument_reg_token;
         tac_operation->src1 = expression_result_token;
@@ -656,7 +671,7 @@ void return_template(NODE* return_node, BASIC_BLOCK* current_BB) {
 
     // new operation TAC
     TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-    tac_operation->is_declaration = 0;
+    tac_operation->assignement_type = NOT_DECLARATION_ASSIGNEMENT_TYPE;
     tac_operation->op = NONE_OPERATION;
     tac_operation->dest = return_reg_token;
     tac_operation->src1 = return_result;
