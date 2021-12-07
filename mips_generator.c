@@ -72,6 +72,13 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
             break;
         }
 
+        case IF_TAC_TYPE: {
+            TAC_IF* if_tac = &current_TAC->v.tac_if;
+            sprintf(new_instr->instr_str, "  beq %s, 1, %s\n", get_register_name(if_tac->condition_result), if_tac->jump_label->lexeme);
+            break;
+        }
+
+
         case FUNCTION_CALL_TAC_TYPE:
             new_instr = function_call_MIPS_template(current_TAC);
             break;
@@ -131,7 +138,7 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
     MIPS_INSTR* caller_AR_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
     sprintf(caller_AR_store_instr->instr_str, "  lw $fp, 0($v0)");
     append_instr(caller_AR_store_instr, initial_instr);
-
+    
     // put caller's return PC and lexical parent scope in new AR if function
     if (block_delimiter->block_type == FUNCTION_BLOCK_TYPE) {
         MIPS_INSTR* caller_PC_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
@@ -162,14 +169,14 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
 
         if (current_local->type == INT_LOCAL_TYPE) {
             MIPS_INSTR* instantiate_int_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_int_instr->instr_str, "  store $zero, %d($fp)  #instantiate local int", current_index);
+            sprintf(instantiate_int_instr->instr_str, "  sw $zero, %d($fp)  #instantiate local int", current_index);
             append_instr(instantiate_int_instr, initial_instr);
             current_index += 4;
         }
         else if (current_local->type == CLOSURE_LOCAL_TYPE) {
             // first part of closure is lexical parent frame, which is just the current frame pointer
             MIPS_INSTR* instantiate_closure_frame_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_closure_frame_instr->instr_str, "  store $fp, %d($fp)  #instantiate local closure", current_index);
+            sprintf(instantiate_closure_frame_instr->instr_str, "  sw $fp, %d($fp)  #instantiate local closure", current_index);
             append_instr(instantiate_closure_frame_instr, initial_instr);
             current_index += 4;
             
@@ -180,7 +187,7 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
             append_instr(instantiate_closure_label_instr_1, initial_instr);
             // then store value of that register in memory
             MIPS_INSTR* instantiate_closure_label_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_closure_label_instr_2->instr_str, "  store $t0, %d($fp)", current_index);
+            sprintf(instantiate_closure_label_instr_2->instr_str, "  sw $t0, %d($fp)", current_index);
             append_instr(instantiate_closure_label_instr_2, initial_instr);
             current_index += 4;
         }
@@ -340,6 +347,9 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
         case EQUAL_OPERATION:
             if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
                 sprintf(new_instr->instr_str, "  seq %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            if (is_register(dest) == 1 && is_register(src1) == 1 && src2->type == CONSTANT) {
+                sprintf(new_instr->instr_str, "  seq %s, %s, %d", get_register_name(dest), get_register_name(src1), src2->value);
             }
             break;
 
@@ -624,6 +634,10 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
 
         while (1) {
 
+            if (current_local == NULL) {
+                break;
+            }
+
             if (current_local->type == INT_LOCAL_TYPE) {
                 printf("Looking at int local %s\n", current_local->v.local_int->name->lexeme);
                 if (current_local->v.local_int->name == search_token) {
@@ -636,6 +650,7 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
                 current_index += 4;
             }
             else if (current_local->type == CLOSURE_LOCAL_TYPE) {
+                printf("d2\n");
                 printf("Looking at closure local %s\n", current_local->v.local_closure->name->lexeme);
                 if (current_local->v.local_closure->name == search_token) {
                     printf("Found local\n\n");
