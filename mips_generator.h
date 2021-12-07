@@ -61,6 +61,7 @@ AR* get_containing_function_AR(TAC* search_TAC);
 MIPS_INSTR* get_AR_address(AR* search_AR, AR* initial_AR);
 MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR);
 TAC* get_next_TAC(TAC* search_TAC);
+int is_register(TOKEN* token);
 char* get_register_name(TOKEN* register_token);
 
 void append_AR(AR* new_AR);

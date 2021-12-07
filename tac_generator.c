@@ -342,6 +342,13 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
             break;
         }
 
+        case '%': {
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = MODULO_OPERATION;
+            break;
+        }
+
         case EQ_OP: {
             left_token = expression_template(current_node->left, current_BB);
             right_token = expression_template(current_node->right, current_BB);
@@ -372,17 +379,17 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB) {
 
         case '>': {
             // swap left and right around so that we can use less
-            right_token = expression_template(current_node->left, current_BB);
-            left_token = expression_template(current_node->right, current_BB);
-            operation = LESS_OPERATION;
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = GREATER_OPERATION;
             break;
         }
 
         case GE_OP: {
             // swap left and right around so that we can use less equal
-            right_token = expression_template(current_node->left, current_BB);
-            left_token = expression_template(current_node->right, current_BB);
-            operation = LESS_EQUAL_OPERATION;
+            left_token = expression_template(current_node->left, current_BB);
+            right_token = expression_template(current_node->right, current_BB);
+            operation = GREATER_EQUAL_OPERATION;
             break;
         }
 

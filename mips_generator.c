@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <math.h>
 #include "C.tab.h"
 #include "mips_generator.h"
 
@@ -151,7 +152,7 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
 
     // get pointer to AR
     MIPS_INSTR* get_FP_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(get_FP_instr->instr_str, "  move $fp, $v0\n");
+    sprintf(get_FP_instr->instr_str, "  move $fp, $v0");
     append_instr(get_FP_instr, initial_instr);
 
     // instantiate locals
@@ -199,7 +200,7 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     TAC_FUNCTION_CALL* function_call_tac = &function_call_TAC->v.tac_function_call;
 
     MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(initial_instr->instr_str, "\n  # loading function's lexical scope into it's first argument");
+    sprintf(initial_instr->instr_str, "  # loading function's lexical scope into it's first argument");
 
     // get address in memory of the closure stored in the activation record
     printf("Searching for address of closure local %s\n", function_call_tac->name->lexeme);
@@ -214,7 +215,7 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
 
     // add jump and link
     MIPS_INSTR* jump_link_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(jump_link_instr->instr_str, "  jal %s\n", function_call_tac->name->lexeme);
+    sprintf(jump_link_instr->instr_str, "  jal %s", function_call_tac->name->lexeme);
     append_instr(jump_link_instr, initial_instr);
 
     return initial_instr;
@@ -261,14 +262,114 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
     switch (operation->op) {
 
         case NONE_OPERATION:
-            if ((dest->type == TEMPORARY_REG_IDENTIFIER || dest->type == ARGUMENT_REG_IDENTIFIER || dest->type == RETURN_REG_IDENTIFIER)
-                && src1->type == CONSTANT) {
+            // load immediate value into register
+            if (is_register(dest) == 1 && src1->type == CONSTANT) {
                 sprintf(new_instr->instr_str, "  li %s, %d", get_register_name(dest), src1->value);
                 break;
             }
-            if ((dest->type == TEMPORARY_REG_IDENTIFIER || dest->type == ARGUMENT_REG_IDENTIFIER || dest->type == RETURN_REG_IDENTIFIER)
-                && (src1->type == TEMPORARY_REG_IDENTIFIER || src1->type == ARGUMENT_REG_IDENTIFIER || src1->type == RETURN_REG_IDENTIFIER)) {
+            // copy register value into other register
+            if (is_register(dest) == 1 && is_register(src1) == 1) {
                 sprintf(new_instr->instr_str, "  move %s, %s", get_register_name(dest), get_register_name(src1));
+            }
+            // load memory address into register
+            if (is_register(dest) == 1 && src1->type == IDENTIFIER) {
+                sprintf(new_instr->instr_str, "  # load memory address into register");
+                // get AR to start looking in
+                AR* current_AR = get_containing_AR(operation_TAC);
+                // load address of local in $t0
+                MIPS_INSTR* load_local_addr_instr = get_local_address(src1, current_AR);
+                append_instr(load_local_addr_instr, new_instr);
+                // load value at address into destination register
+                MIPS_INSTR* load_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(load_local_value_instr->instr_str, "  lw %s, 0($t0)", get_register_name(dest));
+                append_instr(load_local_value_instr, new_instr);
+            }
+            // store register value into memory address
+            if (dest->type == IDENTIFIER && is_register(src1)) {
+                sprintf(new_instr->instr_str, "  # store register value into memory address");
+                // get AR to start looking in
+                AR* current_AR = get_containing_AR(operation_TAC);
+                // load address of local in $t0
+                MIPS_INSTR* load_local_addr_instr = get_local_address(dest, current_AR);
+                append_instr(load_local_addr_instr, new_instr);
+                // store value of register into memory address
+                MIPS_INSTR* load_local_value_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(load_local_value_instr->instr_str, "  sw %s, 0($t0)", get_register_name(src1));
+                append_instr(load_local_value_instr, new_instr);
+            }
+            break;
+
+        case ADD_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  add %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+        
+        case SUBTRACT_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  sub %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case MULTIPLY_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  mul %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case DIVIDE_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  div %s, %s", get_register_name(src1), get_register_name(src2));
+                // copy quotient into destination register
+                MIPS_INSTR* copy_quotient_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(copy_quotient_instr->instr_str, "  mflo %s", get_register_name(dest));
+                append_instr(copy_quotient_instr, new_instr);
+            }
+            break;
+
+        case MODULO_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  div %s, %s", get_register_name(src1), get_register_name(src2));
+                // copy remainder into destination register
+                MIPS_INSTR* copy_remainder_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(copy_remainder_instr->instr_str, "  mfhi %s", get_register_name(dest));
+                append_instr(copy_remainder_instr, new_instr);
+            }
+            break;
+
+        case EQUAL_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  seq %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case NOT_EQUAL_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  sne %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case GREATER_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  sgt %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case GREATER_EQUAL_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  sge %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case LESS_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  slt %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
+            }
+            break;
+
+        case LESS_EQUAL_OPERATION:
+            if (is_register(dest) == 1 && is_register(src1) == 1 && is_register(src2)) {
+                sprintf(new_instr->instr_str, "  sle %s, %s, %s", get_register_name(dest), get_register_name(src1), get_register_name(src2));
             }
             break;
         
@@ -614,6 +715,15 @@ TAC* get_next_TAC(TAC* search_TAC) {
 
     return NULL;
 
+}
+
+// Checks if token is a type of register identifier
+int is_register(TOKEN* token) {
+    if (token->type == TEMPORARY_REG_IDENTIFIER || token->type == ARGUMENT_REG_IDENTIFIER || token->type == RETURN_REG_IDENTIFIER) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 // gets string for name of a register in MIPS

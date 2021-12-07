@@ -101,7 +101,7 @@ void print_tree(NODE* tree) {
 
 void print_tac(BASIC_BLOCK* current_BB) {
 
-  char* operation_characters[9] = {"p", "+", "-", "*", "/", "==", "!=", "<", "<="};
+  char* operation_characters[12] = {"p", "+", "-", "*", "/", "%", "==", "!=", ">", ">=", "<", "<="};
 
   while (1) {
     TAC* current_TAC = current_BB->leader;
