@@ -1,12 +1,3 @@
 int main(void) {
-    function x = test();
-
-    return x();
-}
-
-function test() {
-    function test_inner() {
-        return 2;
-    }
-    return test_inner;
+    return 2;
 }

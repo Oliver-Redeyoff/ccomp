@@ -253,6 +253,32 @@ void print_mips(MIPS_PROGRAM* program) {
 
 }
 
+void generate_asm(MIPS_PROGRAM* program) {
+
+  FILE* fp = fopen("program.asm", "w+");
+
+  MIPS_INSTR* current_instr = program->instructions;
+
+  printf("\n");
+
+  while (1) {
+
+    if (current_instr == NULL) {
+      break;
+    } else {
+      fprintf(fp, "%s\n", current_instr->instr_str);
+    }
+
+    current_instr = current_instr->next;
+
+  }
+
+  fclose(fp);
+
+  return;
+
+}
+
 
 //////////
 // Main //
@@ -335,6 +361,9 @@ int main(int argc, char** argv) {
   
   printf("\n--RESULT END--\n");
   printf("\n\n");
+
+  // Generate MIPS asm file
+  generate_asm(program);
 
 
   return 0;

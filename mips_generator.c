@@ -264,9 +264,14 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
     sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($t0)");
     append_instr(restore_fp_instr, initial_instr);
 
+    // load return address into t0
+    MIPS_INSTR* load_return_addr_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(load_return_addr_instr->instr_str, "  la $t0 4($t0)");
+    append_instr(load_return_addr_instr, initial_instr);
+
     // jump to the return address
     MIPS_INSTR* jump_return_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(jump_return_instr->instr_str, "  jr 4($t0)");
+    sprintf(jump_return_instr->instr_str, "  jr $t0");
     append_instr(jump_return_instr, initial_instr);
 
     return initial_instr;
