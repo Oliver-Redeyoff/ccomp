@@ -55,7 +55,7 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
     switch (tac_type) {
 
         case BLOCK_START_TAC_TYPE: {
-            new_instr = block_start_template(current_TAC);
+            new_instr = block_start_MIPS_template(current_TAC);
             break;
         }
 
@@ -95,7 +95,7 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
             break;
 
         case OPERATION_TAC_TYPE: 
-            new_instr = operation_template(current_TAC);
+            new_instr = operation_MIPS_template(current_TAC);
             break;
 
         case EXIT_PROGRAM_TAC_TYPE: {
@@ -115,9 +115,86 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
 }
 
+// Generate blank activation records
+AR* generate_AR(TAC* block_start_TAC) {
+
+    TOKEN* AR_block_name = block_start_TAC->v.tac_block_delimiter.name;
+
+    // create new AR
+    AR* new_AR = (AR*)malloc(sizeof(AR));
+    new_AR->block_name = AR_block_name;
+    if (block_start_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
+        new_AR->lexical_parent_AR = get_AR(block_start_TAC->v.tac_block_delimiter.parent_block_name);
+    }
+    append_AR(new_AR);
+
+    TAC* current_TAC = get_next_TAC(block_start_TAC);
+    // create int locals
+    while (1) {
+
+        // stop when we reach the end of the block
+        if (current_TAC->type == BLOCK_END_TAC_TYPE && current_TAC->v.tac_block_delimiter.name == AR_block_name) {
+            break;
+        }
+
+        // for any int declaration, add that to the current_AR as a local
+        if (current_TAC->type == OPERATION_TAC_TYPE) {
+
+            TAC_OPERATION* operation = &current_TAC->v.tac_operation;
+
+            if (operation->assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
+                // create new local
+                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
+                new_local->type = INT_LOCAL_TYPE;
+                new_local->name = operation->dest;
+                add_local(new_local, new_AR);
+            }
+            else if (operation->assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
+                // create new local
+                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
+                new_local->type = CLOSURE_LOCAL_TYPE;
+                new_local->name = operation->dest;
+                add_local(new_local, new_AR);
+            }
+
+        }
+
+        current_TAC = get_next_TAC(current_TAC);
+
+    }
+
+    current_TAC = get_next_TAC(block_start_TAC);
+    // now should add closures for functions that were defined in current block
+    while (1) {
+
+        if (current_TAC == NULL) {
+            break;
+        }
+
+        if (current_TAC->type == BLOCK_START_TAC_TYPE && current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
+            
+            if (current_TAC->v.tac_block_delimiter.parent_block_name == AR_block_name) {
+                // create new local
+                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
+                new_local->type = CLOSURE_LOCAL_TYPE;
+                new_local->name = current_TAC->v.tac_block_delimiter.name;
+                new_local->closure_label = current_TAC->v.tac_block_delimiter.name;
+                add_local(new_local, new_AR);
+            }
+
+        }
+
+        current_TAC = get_next_TAC(current_TAC);
+
+    }
+
+    return new_AR;
+
+}
+
 
 // Map start of block to MIPS
-MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
+MIPS_INSTR* block_start_MIPS_template(TAC* block_start_TAC) {
 
     TAC_BLOCK_DELIMITER* block_delimiter = &block_start_TAC->v.tac_block_delimiter;
     
@@ -394,7 +471,7 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
 }
 
 // Map operation tac to mips
-MIPS_INSTR* operation_template(TAC* operation_TAC) {
+MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC) {
 
     MIPS_INSTR* new_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
 
@@ -562,83 +639,6 @@ MIPS_INSTR* operation_template(TAC* operation_TAC) {
 
 }
 
-
-// Generate blank activation records
-AR* generate_AR(TAC* block_start_TAC) {
-
-    TOKEN* AR_block_name = block_start_TAC->v.tac_block_delimiter.name;
-
-    // create new AR
-    AR* new_AR = (AR*)malloc(sizeof(AR));
-    new_AR->block_name = AR_block_name;
-    if (block_start_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
-        new_AR->lexical_parent_AR = get_AR(block_start_TAC->v.tac_block_delimiter.parent_block_name);
-    }
-    append_AR(new_AR);
-
-    TAC* current_TAC = get_next_TAC(block_start_TAC);
-    // create int locals
-    while (1) {
-
-        // stop when we reach the end of the block
-        if (current_TAC->type == BLOCK_END_TAC_TYPE && current_TAC->v.tac_block_delimiter.name == AR_block_name) {
-            break;
-        }
-
-        // for any int declaration, add that to the current_AR as a local
-        if (current_TAC->type == OPERATION_TAC_TYPE) {
-
-            TAC_OPERATION* operation = &current_TAC->v.tac_operation;
-
-            if (operation->assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
-                // create new local
-                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
-                new_local->type = INT_LOCAL_TYPE;
-                new_local->name = operation->dest;
-                add_local(new_local, new_AR);
-            }
-            else if (operation->assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
-                // create new local
-                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
-                new_local->type = CLOSURE_LOCAL_TYPE;
-                new_local->name = operation->dest;
-                add_local(new_local, new_AR);
-            }
-
-        }
-
-        current_TAC = get_next_TAC(current_TAC);
-
-    }
-
-    current_TAC = get_next_TAC(block_start_TAC);
-    // now should add closures for functions that were defined in current block
-    while (1) {
-
-        if (current_TAC == NULL) {
-            break;
-        }
-
-        if (current_TAC->type == BLOCK_START_TAC_TYPE && current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
-            
-            if (current_TAC->v.tac_block_delimiter.parent_block_name == AR_block_name) {
-                // create new local
-                LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
-                new_local->type = CLOSURE_LOCAL_TYPE;
-                new_local->name = current_TAC->v.tac_block_delimiter.name;
-                new_local->closure_label = current_TAC->v.tac_block_delimiter.name;
-                add_local(new_local, new_AR);
-            }
-
-        }
-
-        current_TAC = get_next_TAC(current_TAC);
-
-    }
-
-    return new_AR;
-
-}
 
 // Lookup ar using token
 AR* get_AR(TOKEN* search_token) {

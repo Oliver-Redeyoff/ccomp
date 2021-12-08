@@ -48,15 +48,15 @@ typedef struct mips_program {
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root_BB);
 void MIPS_loop(BASIC_BLOCK* root_BB);
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC);
+AR* generate_AR(TAC* block_start_TAC);
 
-MIPS_INSTR* block_start_template(TAC* block_start_TAC);
+MIPS_INSTR* block_start_MIPS_template(TAC* block_start_TAC);
 MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC);
 MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC);
 MIPS_INSTR* builtin_call_MIPS_template(TAC* builtin_call_TAC);
 MIPS_INSTR* return_MIPS_template(TAC* return_TAC);
-MIPS_INSTR* operation_template(TAC* operation_TAC);
+MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC);
 
-AR* generate_AR(TAC* block_start_TAC);
 AR* get_AR(TOKEN* search_token);
 int get_AR_size(AR* activation_record);
 AR* get_containing_AR(TAC* search_TAC);
