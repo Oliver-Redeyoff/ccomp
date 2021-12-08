@@ -50,6 +50,7 @@ void MIPS_loop(BASIC_BLOCK* root_BB);
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC);
 
 MIPS_INSTR* block_start_template(TAC* block_start_TAC);
+MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC);
 MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC);
 MIPS_INSTR* builtin_call_MIPS_template(TAC* builtin_call_TAC);
 MIPS_INSTR* return_MIPS_template(TAC* return_TAC);

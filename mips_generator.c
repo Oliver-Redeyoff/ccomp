@@ -61,6 +61,11 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
             break;
         }
 
+        case BLOCK_END_TAC_TYPE: {
+            new_instr = block_end_MIPS_template(current_TAC);
+            break;
+        }
+
         case LABEL_TAC_TYPE: {
             TAC_LABEL* label_tac = &current_TAC->v.tac_label;
             sprintf(new_instr->instr_str, "%s:", label_tac->name->lexeme);
@@ -171,7 +176,7 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
     // put lexical parent scope in new AR if if statement or while statement
     if (block_delimiter->block_type == IF_BLOCK_TYPE || block_delimiter->block_type == WHILE_BLOCK_TYPE) {
         MIPS_INSTR* caller_SL_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(caller_SL_store_instr->instr_str, "  lw $fp, 8($v0)");
+        sprintf(caller_SL_store_instr->instr_str, "  sw $fp, 8($v0)");
         append_instr(caller_SL_store_instr, initial_instr);
     }
 
@@ -218,6 +223,44 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
 
 
     return initial_instr;
+
+}
+
+// Map end of block to MIPS
+MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC) {
+
+    TAC_BLOCK_DELIMITER* block_end = &block_end_TAC->v.tac_block_delimiter;
+
+    MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+
+    if (block_end->block_type == FUNCTION_BLOCK_TYPE) {
+        // store frame pointer in temp
+        MIPS_INSTR* store_temp_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(store_temp_fp_instr->instr_str, "  move $t0, $fp");
+        append_instr(store_temp_fp_instr, initial_instr);
+
+        // restore frame pointer to the caller's fp
+        MIPS_INSTR* restore_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($t0)");
+        append_instr(restore_fp_instr, initial_instr);
+
+        // load return address into t0
+        MIPS_INSTR* load_return_addr_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(load_return_addr_instr->instr_str, "  lw $t0 4($t0)");
+        append_instr(load_return_addr_instr, initial_instr);
+
+        // jump to the return address
+        MIPS_INSTR* jump_return_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(jump_return_instr->instr_str, "  jr $t0");
+        append_instr(jump_return_instr, initial_instr);
+    } else {
+        // restore frame pointer to the parent's frame pointer
+        MIPS_INSTR* restore_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($fp)");
+        append_instr(restore_fp_instr, initial_instr);
+    }
+
+    return initial_instr;    
 
 }
 
@@ -910,9 +953,20 @@ char* get_register_name(TOKEN* register_token) {
     char register_name[5];
 
     if (register_token->type == TEMPORARY_REG_IDENTIFIER) {
-        register_name[0] = '$';
-        register_name[1] = 't';
-        register_name[2] = register_token->value+'0';
+        if (register_token->value < 10) {
+            register_name[0] = '$';
+            register_name[1] = 't';
+            register_name[2] = register_token->value+'0';
+        }
+        else if (register_token->value >= 10 && register_token->value < 20) {
+            register_name[0] = '$';
+            register_name[1] = 's';
+            register_name[2] = (register_token->value-10)+'0';
+        }
+        else {
+            printf("ERROR : ran out of registers\n");
+            exit(0);
+        }
     }
     else if (register_token->type == ARGUMENT_REG_IDENTIFIER) {
         register_name[0] = '$';
