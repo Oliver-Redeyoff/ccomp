@@ -23,6 +23,10 @@ MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
     // create new mips program
     MIPS_PROGRAM* program = (MIPS_PROGRAM*)malloc(sizeof(MIPS_PROGRAM));
 
+    MIPS_INSTR* text_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(text_instr->instr_str, ".text");
+    append_instr_to_program(text_instr, program);
+
     MIPS_loop(root_BB, program);
 
     return program;
@@ -107,6 +111,7 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
 }
 
+
 // Map start of block to MIPS
 MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
 
@@ -148,17 +153,17 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
 
     // put caller's AR in new AR
     MIPS_INSTR* caller_AR_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(caller_AR_store_instr->instr_str, "  lw $fp, 0($v0)");
+    sprintf(caller_AR_store_instr->instr_str, "  sw $fp, 0($v0)");
     append_instr(caller_AR_store_instr, initial_instr);
     
     // put caller's return PC and lexical parent scope in new AR if function
     if (block_delimiter->block_type == FUNCTION_BLOCK_TYPE) {
         MIPS_INSTR* caller_PC_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(caller_PC_store_instr->instr_str, "  lw $ra, 4($v0)");
+        sprintf(caller_PC_store_instr->instr_str, "  sw $ra, 4($v0)");
         append_instr(caller_PC_store_instr, initial_instr);
 
         MIPS_INSTR* caller_SL_store_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(caller_SL_store_instr->instr_str, "  lw $t0, 8($v0)");
+        sprintf(caller_SL_store_instr->instr_str, "  sw $t0, 8($v0)");
         append_instr(caller_SL_store_instr, initial_instr);
     }
 
@@ -237,6 +242,18 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     sprintf(load_jump_address_instr->instr_str, "  lw $t0, 4($t0)");
     append_instr(load_jump_address_instr, initial_instr);
 
+    // first get value of PC so that we can set RA
+    char* getPC_label = new_getPC();
+    MIPS_INSTR* set_RA_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(set_RA_instr_1->instr_str, "  jal %s", getPC_label);
+    append_instr(set_RA_instr_1, initial_instr);
+    MIPS_INSTR* set_RA_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(set_RA_instr_2->instr_str, "  %s:", getPC_label);
+    append_instr(set_RA_instr_2, initial_instr);
+    MIPS_INSTR* set_RA_instr_3 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(set_RA_instr_3->instr_str, "  la $ra, 8($ra)");
+    append_instr(set_RA_instr_3, initial_instr);
+
     // add jump and link to address store in register t0
     MIPS_INSTR* jump_link_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
     sprintf(jump_link_instr->instr_str, "  jr $t0");
@@ -266,7 +283,7 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
 
     // load return address into t0
     MIPS_INSTR* load_return_addr_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(load_return_addr_instr->instr_str, "  la $t0 4($t0)");
+    sprintf(load_return_addr_instr->instr_str, "  lw $t0 4($t0)");
     append_instr(load_return_addr_instr, initial_instr);
 
     // jump to the return address
@@ -850,6 +867,24 @@ char* get_register_name(TOKEN* register_token) {
     }
 
     return strdup(register_name);
+
+}
+
+// Generate new temporary register
+int next_getPC = 1;
+char* new_getPC() {
+
+    char* buf = (char*)malloc(12*sizeof(char));
+    buf[0] = 'g';
+    buf[1] = 'e';
+    buf[2] = 't';
+    buf[3] = 'P';
+    buf[4] = 'C';
+    buf[5] = next_getPC+'0';
+
+    next_getPC += 1;
+
+    return buf;
 
 }
 

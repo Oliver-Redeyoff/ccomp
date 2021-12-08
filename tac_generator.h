@@ -105,6 +105,7 @@ TOKEN* find_main_token(BASIC_BLOCK* root_BB);
 void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB);
 void subdivide_basic_blocks(BASIC_BLOCK* root_BB);
 void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB);
+void rename_block(BASIC_BLOCK* root_BB, char* search_name, char* new_name);
 
 void variable_declaration_template(NODE* assignement_node, BASIC_BLOCK* current_BB);
 void variable_assignement_rec(NODE* current_node, TOKEN* result_temporary, BASIC_BLOCK* current_BB, int is_declaration);

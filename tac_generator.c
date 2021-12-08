@@ -71,6 +71,12 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
     // divide basic blocks into more basic blocks if needed
     subdivide_basic_blocks(root_Basic_Block);
 
+    // rename main to main1
+    rename_block(root_Basic_Block, "main", "main1");
+
+    // rename premain to main
+    rename_block(root_Basic_Block, "premain", "main");
+
     return root_Basic_Block;
 
 }
@@ -228,6 +234,48 @@ void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB) {
 
     new_BB->leader = current_TAC->next;
     current_TAC->next = NULL;
+
+    return;
+
+}
+
+// main needs to be renamed to main1 so that it is not confused with actuall entry point function main
+void rename_block(BASIC_BLOCK* root_BB, char* search_name, char* new_name) {
+
+    BASIC_BLOCK* current_BB = root_BB;
+    TAC* current_TAC = current_BB->leader;
+
+    while (1) {
+
+        current_TAC = current_BB->leader;
+
+        while (1) {
+            
+            if (current_TAC == NULL) {
+                break;
+            }
+
+            if (current_TAC->type == BLOCK_START_TAC_TYPE) {
+                if (strcmp(current_TAC->v.tac_block_delimiter.name->lexeme, search_name) == 0) {
+                    current_TAC->v.tac_block_delimiter.name->lexeme = new_name;
+                }
+            }
+
+            if (current_TAC->next == NULL) {
+                break;
+            } else {
+                current_TAC = current_TAC->next;
+            }
+
+        }
+
+        if (current_BB->next == NULL) {
+            break;
+        } else {
+            current_BB = current_BB->next;
+        }
+
+    }
 
     return;
 

@@ -52,6 +52,7 @@ int get_local_type(TOKEN* search_token, AR* initial_AR);
 TAC* get_next_TAC(TAC* search_TAC);
 int is_register(TOKEN* token);
 char* get_register_name(TOKEN* register_token);
+char* new_getPC();
 
 void append_AR(AR* new_AR);
 void add_local(LOCAL* new_local, AR* current_AR);
