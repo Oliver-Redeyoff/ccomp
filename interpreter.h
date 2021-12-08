@@ -53,8 +53,9 @@ extern TOKEN* lookup_token(char*);
 void declare_function(NODE* function_node, FRAME* current_frame);
 VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame);
 int is_inbuilt_function(TOKEN* function_name_token);
-void print_builtin(NODE* argument_values_node, FRAME* current_frame);
-VALUE* input_builtin();
+void print_string_builtin(NODE* argument_values_node);
+void print_int_builtin(NODE* argument_values_node, FRAME* current_frame);
+VALUE* input_int_builtin();
 
 void if_statement(NODE* if_node, FRAME* current_frame);
 void while_statement(NODE* while_node, FRAME* current_frame);

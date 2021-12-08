@@ -1,3 +1,14 @@
 int main(void) {
-    return 2;
+    function fn = test();
+    int x = fn();
+    print_string("value of x : ");
+    print_int(x);
+    return 1;
+}
+
+function test() {
+    int test_inner() {
+        return 1;
+    }
+    return test_inner;
 }

@@ -1,5 +1,7 @@
 int main(void) {
-    return fact(4);
+    int x = fact(4);
+    print_string("value of x : ");
+    print_int(x);
 }
 
 int fact(int x) {

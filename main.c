@@ -144,6 +144,15 @@ void print_tac(BASIC_BLOCK* current_BB) {
           printf("call %s\n", current_TAC->v.tac_function_call.name->lexeme);
           break;
 
+        case BUILTIN_CALL_TAC_TYPE:
+          printf("call builtin %d", current_TAC->v.tac_builtin_call.type);
+          if (current_TAC->v.tac_builtin_call.argument != NULL) {
+            printf(", %s\n", current_TAC->v.tac_builtin_call.argument->lexeme);
+          } else {
+            printf("\n");
+          }
+          break;
+
         case IF_TAC_TYPE: {
           TAC_IF tac_if = current_TAC->v.tac_if;
           printf("if ");
@@ -233,19 +242,37 @@ void print_tac(BASIC_BLOCK* current_BB) {
 
 void print_mips(MIPS_PROGRAM* program) {
 
-  MIPS_INSTR* current_instr = program->instructions;
-
   printf("\n");
+  printf(".text\n");
 
+  MIPS_INSTR* current_instr = program->instructions;
   while (1) {
 
     if (current_instr == NULL) {
       break;
     } else {
-      printf("- %s\n", current_instr->instr_str);
+      printf("%s\n", current_instr->instr_str);
     }
 
     current_instr = current_instr->next;
+
+  }
+
+  printf("\n");
+  printf(".data\n");
+
+  MIPS_DATA* current_data = program->data;
+  while (1) {
+
+    if (current_data == NULL) {
+      break;
+    } else {
+      if (current_data->type == TEXT_DATA_TYPE) {
+        printf("%s:  .asciiz \"%s\"\n", current_data->label, current_data->text);
+      }
+    }
+
+    current_data = current_data->next;
 
   }
 
@@ -257,10 +284,10 @@ void generate_asm(MIPS_PROGRAM* program) {
 
   FILE* fp = fopen("program.asm", "w+");
 
+  fprintf(fp, "\n");
+  fprintf(fp, ".text\n");
+
   MIPS_INSTR* current_instr = program->instructions;
-
-  printf("\n");
-
   while (1) {
 
     if (current_instr == NULL) {
@@ -270,6 +297,24 @@ void generate_asm(MIPS_PROGRAM* program) {
     }
 
     current_instr = current_instr->next;
+
+  }
+
+  fprintf(fp, "\n");
+  fprintf(fp, ".data\n");
+
+  MIPS_DATA* current_data = program->data;
+  while (1) {
+
+    if (current_data == NULL) {
+      break;
+    } else {
+      if (current_data->type == TEXT_DATA_TYPE) {
+        fprintf(fp, "%s:  .asciiz \"%s\"\n", current_data->label, current_data->text);
+      }
+    }
+
+    current_data = current_data->next;
 
   }
 

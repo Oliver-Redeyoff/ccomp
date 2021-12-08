@@ -6,8 +6,9 @@
 #include "tac_generator.h"
 
 TOKEN* return_reg_token;
-
 TOKEN* parent_block_token;
+char* built_in_functions_tac[3] = {"print_string", "print_int", "read_int"};
+
 
 // Entry point of TAC generation
 BASIC_BLOCK* generate_TAC(NODE* tree) {
@@ -640,6 +641,45 @@ void function_declaration_argument_retrival_rec(NODE* current_node, BASIC_BLOCK*
 // Adds function call TAC to current basic block
 void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB) {
 
+    TOKEN* function_name_token = (TOKEN*)apply_node->left->left;
+
+    if (strcmp(function_name_token->lexeme, built_in_functions_tac[0]) == 0) {
+        // create new builtin call TAC
+        TAC_BUILTIN_CALL* builtin_call = (TAC_BUILTIN_CALL*)malloc(sizeof(TAC_BUILTIN_CALL));
+        builtin_call->type = PRINT_STR_BUILTIN_FUNCTION_TYPE;
+        builtin_call->argument = (TOKEN*)apply_node->right->left;
+        // create new TAC
+        TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+        new_tac->type = BUILTIN_CALL_TAC_TYPE;
+        new_tac->v.tac_builtin_call = *builtin_call;
+        add_TAC(new_tac, current_BB);
+        return;
+    }
+    else if (strcmp(function_name_token->lexeme, built_in_functions_tac[1]) == 0) {
+        // create new builtin call TAC
+        TAC_BUILTIN_CALL* builtin_call = (TAC_BUILTIN_CALL*)malloc(sizeof(TAC_BUILTIN_CALL));
+        builtin_call->type = PRINT_INT_BUILTIN_FUNCTION_TYPE;
+        builtin_call->argument = (TOKEN*)apply_node->right->left;
+        // create new TAC
+        TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+        new_tac->type = BUILTIN_CALL_TAC_TYPE;
+        new_tac->v.tac_builtin_call = *builtin_call;
+        add_TAC(new_tac, current_BB);
+        return;
+    }
+    else if (strcmp(function_name_token->lexeme, built_in_functions_tac[2]) == 0) {
+        // create new builtin call TAC
+        TAC_BUILTIN_CALL* builtin_call = (TAC_BUILTIN_CALL*)malloc(sizeof(TAC_BUILTIN_CALL));
+        builtin_call->type = INPUT_INT_BUILTIN_FUNCTION_TYPE;
+        builtin_call->argument = NULL;
+        // create new TAC
+        TAC* new_tac = (TAC*)malloc(sizeof(TAC));
+        new_tac->type = BUILTIN_CALL_TAC_TYPE;
+        new_tac->v.tac_builtin_call = *builtin_call;
+        add_TAC(new_tac, current_BB);
+        return;
+    }
+
     // first put arguments in argument registers
     if (apply_node->right != NULL) {
         function_call_argument_buffer_rec(apply_node->right, current_BB, 1);
@@ -647,7 +687,7 @@ void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB) {
 
     // create new function call TAC
     TAC_FUNCTION_CALL* tac_function_call = (TAC_FUNCTION_CALL*)malloc(sizeof(TAC_FUNCTION_CALL));
-    tac_function_call->name = (TOKEN*)apply_node->left->left;
+    tac_function_call->name = function_name_token;
     tac_function_call->arity = function_call_argument_count_rec(apply_node->right);
     // create new TAC
     TAC* new_tac = (TAC*)malloc(sizeof(TAC));

@@ -16,9 +16,16 @@ enum TAC_TYPE {
     BLOCK_START_TAC_TYPE = 4,
     BLOCK_END_TAC_TYPE = 5,
     FUNCTION_CALL_TAC_TYPE = 6,
-    IF_TAC_TYPE = 7,
-    RETURN_TAC_TYPE = 8,
-    EXIT_PROGRAM_TAC_TYPE = 9
+    BUILTIN_CALL_TAC_TYPE = 7,
+    IF_TAC_TYPE = 8,
+    RETURN_TAC_TYPE = 9,
+    EXIT_PROGRAM_TAC_TYPE = 10
+};
+
+enum BUILTIN_FUNCTION_TYPE {
+    PRINT_STR_BUILTIN_FUNCTION_TYPE = 1,
+    PRINT_INT_BUILTIN_FUNCTION_TYPE = 2,
+    INPUT_INT_BUILTIN_FUNCTION_TYPE = 3
 };
 
 enum OP_TYPE {
@@ -76,6 +83,11 @@ typedef struct tac_function_call {
     int arity;
 } TAC_FUNCTION_CALL;
 
+typedef struct tac_builtin_call {
+    int type;
+    TOKEN* argument;
+} TAC_BUILTIN_CALL;
+
 typedef struct tac_if {
     TOKEN* condition_result;
     TOKEN* jump_label;
@@ -89,6 +101,7 @@ typedef struct tac {
         TAC_OPERATION tac_operation;
         TAC_BLOCK_DELIMITER tac_block_delimiter;
         TAC_FUNCTION_CALL tac_function_call;
+        TAC_BUILTIN_CALL tac_builtin_call;
         TAC_IF tac_if;
     } v;
     struct tac* next;

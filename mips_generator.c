@@ -7,6 +7,7 @@
 #include "mips_generator.h"
 
 BASIC_BLOCK* root_BB;
+MIPS_PROGRAM* program;
 AR* AR_list;
 
 // Entry point for MIPS generation
@@ -21,27 +22,23 @@ MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
     AR_list = global_AR;
 
     // create new mips program
-    MIPS_PROGRAM* program = (MIPS_PROGRAM*)malloc(sizeof(MIPS_PROGRAM));
+    program = (MIPS_PROGRAM*)malloc(sizeof(MIPS_PROGRAM));
 
-    MIPS_INSTR* text_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-    sprintf(text_instr->instr_str, ".text");
-    append_instr_to_program(text_instr, program);
-
-    MIPS_loop(root_BB, program);
+    MIPS_loop(root_BB);
 
     return program;
 
 }
 
 // Loop over TAC and map to MIPS
-void MIPS_loop(BASIC_BLOCK* root_BB, MIPS_PROGRAM* program) {
+void MIPS_loop(BASIC_BLOCK* root_BB) {
 
     TAC* current_TAC = get_next_TAC(NULL);
 
     while (current_TAC != NULL) {
 
         MIPS_INSTR* new_instr = map_to_MIPS(current_TAC);
-        append_instr_to_program(new_instr, program);
+        append_instr_to_program(new_instr);
 
         current_TAC = get_next_TAC(current_TAC);
 
@@ -84,6 +81,10 @@ MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
         case FUNCTION_CALL_TAC_TYPE:
             new_instr = function_call_MIPS_template(current_TAC);
+            break;
+
+        case BUILTIN_CALL_TAC_TYPE:
+            new_instr = builtin_call_MIPS_template(current_TAC);
             break;
 
         case RETURN_TAC_TYPE:
@@ -199,13 +200,15 @@ MIPS_INSTR* block_start_template(TAC* block_start_TAC) {
             
             // second part of closure is adress of label
             // first put address to label in register
-            MIPS_INSTR* instantiate_closure_label_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_closure_label_instr_1->instr_str, "  la $t0, %s", current_local->name->lexeme);
-            append_instr(instantiate_closure_label_instr_1, initial_instr);
-            // then store value of that register in memory
-            MIPS_INSTR* instantiate_closure_label_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-            sprintf(instantiate_closure_label_instr_2->instr_str, "  sw $t0, %d($fp)", current_index);
-            append_instr(instantiate_closure_label_instr_2, initial_instr);
+            if (current_local->closure_label != NULL) {
+                MIPS_INSTR* instantiate_closure_label_instr_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(instantiate_closure_label_instr_1->instr_str, "  la $t0, %s", current_local->closure_label->lexeme);
+                append_instr(instantiate_closure_label_instr_1, initial_instr);
+                // then store value of that register in memory
+                MIPS_INSTR* instantiate_closure_label_instr_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+                sprintf(instantiate_closure_label_instr_2->instr_str, "  sw $t0, %d($fp)", current_index);
+                append_instr(instantiate_closure_label_instr_2, initial_instr);
+            }
             current_index += 4;
         }
 
@@ -258,6 +261,61 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     MIPS_INSTR* jump_link_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
     sprintf(jump_link_instr->instr_str, "  jr $t0");
     append_instr(jump_link_instr, initial_instr);
+
+    return initial_instr;
+
+}
+
+// Map builtin call to MIPS
+MIPS_INSTR* builtin_call_MIPS_template(TAC* builtin_call_TAC) {
+
+    TAC_BUILTIN_CALL* builtin_call = &builtin_call_TAC->v.tac_builtin_call;
+
+    MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    sprintf(initial_instr->instr_str, "  # calling builtin function");
+
+    if (builtin_call->type == PRINT_STR_BUILTIN_FUNCTION_TYPE) {
+        // first add data to program and get it's label
+        MIPS_DATA* text_data = (MIPS_DATA*)malloc(sizeof(MIPS_DATA));
+        text_data->type = TEXT_DATA_TYPE;
+        sprintf(text_data->text, "%s", builtin_call->argument->lexeme);
+        char* data_label = append_data_to_program(text_data);
+        // now do the syscall
+        MIPS_INSTR* print_str_syscall_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_1->instr_str, "  la $a0, %s", data_label);
+        append_instr(print_str_syscall_1, initial_instr);
+        MIPS_INSTR* print_str_syscall_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_2->instr_str, "  li $v0 4");
+        append_instr(print_str_syscall_2, initial_instr);
+        MIPS_INSTR* print_str_syscall_3 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_3->instr_str, "  syscall");
+        append_instr(print_str_syscall_3, initial_instr);
+    }
+    else if (builtin_call->type == PRINT_INT_BUILTIN_FUNCTION_TYPE) {
+        // first load int address
+        AR* containing_block_AR = get_containing_AR(builtin_call_TAC);
+        MIPS_INSTR* get_addr_instr = get_local_address(builtin_call->argument, containing_block_AR);
+        append_instr(get_addr_instr, initial_instr);
+        // now do the syscall
+        MIPS_INSTR* print_str_syscall_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_1->instr_str, "  lw $a0, 0($t0)");
+        append_instr(print_str_syscall_1, initial_instr);
+        MIPS_INSTR* print_str_syscall_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_2->instr_str, "  li $v0 1");
+        append_instr(print_str_syscall_2, initial_instr);
+        MIPS_INSTR* print_str_syscall_3 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_3->instr_str, "  syscall");
+        append_instr(print_str_syscall_3, initial_instr);
+    }
+    else if (builtin_call->type == INPUT_INT_BUILTIN_FUNCTION_TYPE) {
+        // do the syscall
+        MIPS_INSTR* print_str_syscall_1 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_1->instr_str, "  li $v0 5");
+        append_instr(print_str_syscall_1, initial_instr);
+        MIPS_INSTR* print_str_syscall_2 = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+        sprintf(print_str_syscall_2->instr_str, "  syscall");
+        append_instr(print_str_syscall_2, initial_instr);
+    }
 
     return initial_instr;
 
@@ -532,6 +590,7 @@ AR* generate_AR(TAC* block_start_TAC) {
                 LOCAL* new_local = (LOCAL*)malloc(sizeof(LOCAL));
                 new_local->type = CLOSURE_LOCAL_TYPE;
                 new_local->name = current_TAC->v.tac_block_delimiter.name;
+                new_local->closure_label = current_TAC->v.tac_block_delimiter.name;
                 add_local(new_local, new_AR);
             }
 
@@ -958,8 +1017,8 @@ void append_instr(MIPS_INSTR* new_instr, MIPS_INSTR* instr_chain) {
 
 }
 
-// Add new MIPS instruction to linked list
-void append_instr_to_program(MIPS_INSTR* new_instr, MIPS_PROGRAM* program) {
+// Add new MIPS instruction to program
+void append_instr_to_program(MIPS_INSTR* new_instr) {
 
     if (program->instructions == NULL) {
         program->instructions = new_instr;
@@ -969,5 +1028,50 @@ void append_instr_to_program(MIPS_INSTR* new_instr, MIPS_PROGRAM* program) {
     append_instr(new_instr, program->instructions);
     
     return;
+
+}
+
+// Add data to chain of data
+void append_data(MIPS_DATA* new_data, MIPS_DATA* data_chain) {
+
+    MIPS_DATA* current_data = data_chain;
+
+    while (1) {
+
+        if (current_data->next == NULL) {
+            current_data->next = new_data;
+            break;
+        } else {
+            current_data = current_data->next;
+        }
+
+    }
+
+    return;
+
+}
+
+// Add new MIPS data to program, returns label of new data
+int data_count = 1;
+char* append_data_to_program(MIPS_DATA* new_data) {
+
+    char* data_label = (char*)malloc(6*sizeof(char));
+    data_label[0] = 'd';
+    data_label[1] = 'a';
+    data_label[2] = 't';
+    data_label[3] = 'a';
+    data_label[4] = data_count + '0';
+
+    sprintf(new_data->label, "%s", data_label);
+
+    if (program->data == NULL) {
+        program->data = new_data;
+    } else {
+        append_data(new_data, program->data);
+    }
+
+    data_count += 1;
+    
+    return data_label;
 
 }

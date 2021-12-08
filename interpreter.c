@@ -8,9 +8,7 @@
 VALUE* global_interpret_result = NULL;
 char global_error[100] = "";
 int global_interupt = 0;
-
-char* built_in_functions[2] = {"print", "input"};
-
+char* built_in_functions[3] = {"print_string", "print_int", "read_int"};
 
 
 // Creates a new closure in given frame
@@ -69,11 +67,15 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
   if (is_inbuilt_function(function_name_token) == 1) {
 
     if (strcmp(function_name_token->lexeme, built_in_functions[0]) == 0) {
-      print_builtin(argument_values_node, current_frame);
+      print_string_builtin(argument_values_node);
       return NULL;
     }
     else if (strcmp(function_name_token->lexeme, built_in_functions[1]) == 0) {
-      return input_builtin();
+      print_int_builtin(argument_values_node, current_frame);
+      return NULL;
+    }
+    else if (strcmp(function_name_token->lexeme, built_in_functions[2]) == 0) {
+      return input_int_builtin();
     }
 
   }
@@ -124,13 +126,37 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
 
 }
 
-// Builtin print function
-void print_builtin(NODE* argument_values_node, FRAME* current_frame) {
+// Builtin print string function
+void print_string_builtin(NODE* argument_values_node) {
 
   if (argument_values_node->type == LEAF) {
     TOKEN* string_token = (TOKEN*)argument_values_node->left;
     if (string_token->type == STRING_LITERAL) {
       printf("%s", string_token->lexeme);
+    }
+    else if (string_token->type == IDENTIFIER) {
+      strcpy(global_error, "Print string should have a string as argument");
+      global_interupt = ERROR_INTERUPT;
+      return;
+    }
+  } else {
+    strcpy(global_error, "Print string only takes one argument");
+    global_interupt = ERROR_INTERUPT;
+    return;
+  }
+
+  return;
+
+}
+
+// Builtin print int function
+void print_int_builtin(NODE* argument_values_node, FRAME* current_frame) {
+  if (argument_values_node->type == LEAF) {
+    TOKEN* string_token = (TOKEN*)argument_values_node->left;
+    if (string_token->type == STRING_LITERAL) {
+      strcpy(global_error, "Print int should have a identifier as argument");
+      global_interupt = ERROR_INTERUPT;
+      return;
     }
     else if (string_token->type == IDENTIFIER) {
       VALUE* var_value = get_value(string_token, INTEGER_TYPE, current_frame);
@@ -143,11 +169,10 @@ void print_builtin(NODE* argument_values_node, FRAME* current_frame) {
   }
 
   return;
-
 }
 
-// Builtin input function
-VALUE* input_builtin() {
+// Builtin input int function
+VALUE* input_int_builtin() {
 
   VALUE* input = (VALUE*)malloc(sizeof(VALUE));
   if (input == NULL) {
@@ -343,7 +368,7 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
   else if (variable_value->type == CLOSURE_TYPE) {
     printf("Declaring function variable %s\n", name_token->lexeme);
   }
-
+  
   BINDING* test = add_binding(destination_frame, name_token, variable_value);
 
   return;
