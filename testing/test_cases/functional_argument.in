@@ -1,0 +1,16 @@
+int main() {
+    function fn1 = plus_one;
+    function fn2 = twice(plus_one);
+    int x = fn2(2);
+    print_int(x);
+    return 0;
+}
+
+function plus_one(int x) {
+    return x+1;
+}
+
+function twice(function f) {
+    int g(int x) { return f(f(x)); }
+    return g;
+}

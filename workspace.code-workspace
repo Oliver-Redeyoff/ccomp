@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../spim-examples"
 		}
 	],
 	"settings": {
@@ -37,7 +34,8 @@
 			"type_traits": "c",
 			"stop_token": "c",
 			"tac_generator.h": "c",
-			"mips_generator.h": "c"
+			"mips_generator.h": "c",
+			"interpreter.h": "c"
 		}
 	}
 }

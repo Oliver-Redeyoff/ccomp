@@ -357,7 +357,7 @@ int main(int argc, char** argv) {
   VALUE* result = interpret(tree);
   
   BASIC_BLOCK* root_BB = generate_TAC(tree);
-  // print_tac(root_BB);
+  //print_tac(root_BB);
   
   MIPS_PROGRAM* program = generate_MIPS(root_BB);
   // print_mips(program);

@@ -616,11 +616,17 @@ void function_declaration_argument_retrival_rec(NODE* current_node, BASIC_BLOCK*
         // get argument register token which should contain passed argument result
         TOKEN* argument_reg_token = new_argument_reg(arg_count);
         // get argument variable token
+        TOKEN* argument_type_token = (TOKEN*)current_node->left->left;
         TOKEN* argument_variable_token = (TOKEN*)current_node->right->left;
 
         // new operation TAC
         TAC_OPERATION* tac_operation = (TAC_OPERATION*)malloc(sizeof(TAC_OPERATION));
-        tac_operation->assignement_type = INT_DECLARATION_ASSIGNEMENT_TYPE;
+        if (strcmp(argument_type_token->lexeme, "int") == 0) {
+            tac_operation->assignement_type = INT_DECLARATION_ASSIGNEMENT_TYPE;
+        }
+        else if (strcmp(argument_type_token->lexeme, "function") == 0) {
+            tac_operation->assignement_type = CLOSURE_DECLARATION_ASSIGNEMENT_TYPE;
+        }
         tac_operation->op = NONE_OPERATION;
         tac_operation->dest = argument_variable_token;
         tac_operation->src1 = argument_reg_token;
