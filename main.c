@@ -15,6 +15,8 @@ extern NODE* yyparse(void);
 extern NODE* ans;
 extern void init_symbtable(void);
 
+char program_name[50];
+
 /////////////////////////
 // Visualisation stuff //
 /////////////////////////
@@ -282,7 +284,12 @@ void print_mips(MIPS_PROGRAM* program) {
 
 void generate_asm(MIPS_PROGRAM* program) {
 
-  FILE* fp = fopen("program.asm", "w+");
+  char asm_file_name[80];
+  strcpy(asm_file_name, "./testing/results/");
+  strcat(asm_file_name, program_name);
+  strcat(asm_file_name, ".asm");
+
+  FILE* fp = fopen(asm_file_name, "w+");
 
   fprintf(fp, "\n");
   fprintf(fp, ".text\n");
@@ -332,80 +339,28 @@ int main(int argc, char** argv) {
 
   NODE* tree;
 
-  if (argc>1 && strcmp(argv[1],"-d")==0) yydebug = 1;
+  if (argc == 2) {
+    sprintf(program_name, "%s", argv[1]);
+    //yydebug = 1;
+  } else {
+    sprintf(program_name, "noname");
+  }
+
   init_symbtable();
-  //printf("--C COMPILER\n");
   
   // Parse inputed program into AST
   yyparse();
   tree = ans;
-  print_tree(tree);
+  //print_tree(tree);
 
-  // int c;
-  // while ((c = getchar()) != '\n' && c != EOF) { }
-
-  // int input_val;
-
-  // printf("User input : ");
-  // scanf("%d", &input_val);
-  // printf("Input of user was %c\n", input_val);
-  
-
-
-  // Interprete result of the program from AST
-  printf("\n\n");
-  printf("-----------------\n");
-  printf("--INTEPRETATION--\n");
-  printf("-----------------\n\n");
-
-  printf("--DEBUG START--\n\n");
 
   VALUE* result = interpret(tree);
   
-  printf("\n--DEBUG END--\n");
-  printf("\n\n\n");
-
-
-
-  // Generate tac from AST
-  printf("------------------\n");
-  printf("--TAC GENERATION--\n");
-  printf("------------------\n\n");
-
-  printf("--DEBUG START--\n\n");
-  
   BASIC_BLOCK* root_BB = generate_TAC(tree);
-  
-  printf("\n--DEBUG END--\n");
-  printf("\n\n");
-  
-  printf("--RESULT START--\n");
-  
-  print_tac(root_BB);
-  
-  printf("\n--RESULT END--\n");
-  printf("\n\n");
-
-
-
-  // Generate tac from AST
-  printf("-------------------\n");
-  printf("--MIPS GENERATION--\n");
-  printf("-------------------\n\n");
-
-  printf("--DEBUG START--\n\n");
+  // print_tac(root_BB);
   
   MIPS_PROGRAM* program = generate_MIPS(root_BB);
-  
-  printf("\n--DEBUG END--\n");
-  printf("\n\n");
-
-  printf("--RESULT START--\n");
-  
-  print_mips(program);
-  
-  printf("\n--RESULT END--\n");
-  printf("\n\n");
+  // print_mips(program);
 
   // Generate MIPS asm file
   generate_asm(program);

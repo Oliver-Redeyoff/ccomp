@@ -80,8 +80,6 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
 
   }
 
-  printf("Setting up function %s\n", function_name_token->lexeme);
-
   // find the closure for the function
   VALUE* clos_value = get_value(function_name_token, CLOSURE_TYPE, current_frame);
   CLOSURE* clos = clos_value->v.closure;
@@ -98,7 +96,6 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
   }
 
   // then interprete body of function
-  printf("Interpreting function %s\n", function_name_token->lexeme);
   interpret_rec(clos->declaration->right, new_frame);
 
   // get returned value and reset global value and interupt
@@ -107,19 +104,6 @@ VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRA
     memcpy(func_return_value, global_interpret_result, sizeof(VALUE));
     global_interpret_result = NULL;
     global_interupt = NO_INTERUPT;
-  }
-
-  if (func_return_value == NULL) {
-    printf("Function %s returning null\n", function_name_token->lexeme);
-  }
-  else if (func_return_value->type == INTEGER_TYPE) {
-    printf("Function %s returning %d\n", function_name_token->lexeme, func_return_value->v.integer);
-  }
-  else if (func_return_value->type == CLOSURE_TYPE) {
-    printf("Function %s returning function\n", function_name_token->lexeme);
-  }
-  else {
-    printf("Function %s returning something elseof type %d\n", function_name_token->lexeme, func_return_value->type);
   }
 
   return func_return_value;
@@ -235,11 +219,8 @@ void if_statement(NODE* if_node, FRAME* current_frame) {
 // While loop
 void while_statement(NODE* while_node, FRAME* current_frame) {
 
-  printf("Entering loop\n");
-
   while (1) {
 
-    printf("Looping\n");
     // if loop condition is false exit loop
     VALUE* loop_condition = evaluate_expression(while_node->left, current_frame);
     if (loop_condition->v.integer == 0) {
@@ -361,13 +342,6 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
       return;
     }
   }
-
-  if (variable_value->type == INTEGER_TYPE) {
-    printf("Declaring int variable %s with value %d\n", name_token->lexeme, variable_value->v.integer);
-  }
-  else if (variable_value->type == CLOSURE_TYPE) {
-    printf("Declaring function variable %s\n", name_token->lexeme);
-  }
   
   BINDING* test = add_binding(destination_frame, name_token, variable_value);
 
@@ -409,8 +383,6 @@ void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame) 
   BINDING* binding = find_binding(name_token, current_frame);
   VALUE* new_value = evaluate_expression(value_node, current_frame);
   binding->val = new_value;
-
-  printf("Assigning variable %s with value %d\n", name_token->lexeme, new_value->v.integer);
 
   return;
 

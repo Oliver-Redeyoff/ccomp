@@ -42,7 +42,6 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
 
     parent_block_token = premain_token;
     
-    printf("Starting translating tac\n");
     map_to_TAC(tree, root_Basic_Block);
 
     // get main function name token
@@ -787,7 +786,6 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TOKEN* if_label_token = new_if();
     TOKEN* else_label_token = new_else();
     TOKEN* next_label_token = new_next();
-
 
     // create if condition TAC
     // get token containing result of if condition

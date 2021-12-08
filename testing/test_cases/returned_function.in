@@ -1,9 +1,10 @@
+int main(void) {
+    function f = cplus(2);
+    int x = f(3);
+    print_int(x);
+}
+
 function cplus(int a) {
     int cplusa(int b) { return a+b; }
     return cplusa;
-}
-
-int main(void) {
-    function f = cplus(2);
-    return f(3);
 }

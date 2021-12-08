@@ -15,8 +15,6 @@ MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
 
     root_BB = root;
 
-    printf("starting generating MIPS\n");
-
     // first generate ARs
     AR* global_AR = (AR*)malloc(sizeof(AR));
     AR_list = global_AR;
@@ -273,7 +271,6 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     sprintf(initial_instr->instr_str, "  # calling function, loading it's lexical scope as first argument");
 
     // get address in memory of the closure stored in the activation record
-    printf("Searching for address of closure local %s\n", function_call_tac->name->lexeme);
     AR* containing_block_AR = get_containing_AR(function_call_TAC);
     MIPS_INSTR* get_addr_instr = get_local_address(function_call_tac->name, containing_block_AR);
     append_instr(get_addr_instr, initial_instr);
@@ -573,13 +570,9 @@ AR* generate_AR(TAC* block_start_TAC) {
 
     // create new AR
     AR* new_AR = (AR*)malloc(sizeof(AR));
-    printf("Creating new AR for %s\n", AR_block_name->lexeme);
     new_AR->block_name = AR_block_name;
     if (block_start_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
-        printf("With lexical parent : %s\n", block_start_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
         new_AR->lexical_parent_AR = get_AR(block_start_TAC->v.tac_block_delimiter.parent_block_name);
-    } else {
-        printf("With no lexical parent\n");
     }
     append_AR(new_AR);
 
@@ -798,14 +791,11 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
 
     AR* current_AR = initial_AR;
     LOCAL* current_local = NULL;
-    printf("\n");
 
     while (1) {
 
         current_local = current_AR->locals;
         int current_index = 12;
-
-        printf("Looking at AR %s\n", current_AR->block_name->lexeme);
 
         while (1) {
 
@@ -813,10 +803,8 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
                 break;
             }
 
-            printf("Looking at int local %s\n", current_local->name->lexeme);
             if (current_local->name == search_token) {
                 MIPS_INSTR* get_from_memory_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-                printf("Found local\n\n");
                 sprintf(get_from_memory_instr->instr_str, "  la $t0, %d($t0)", current_index);
                 append_instr(get_from_memory_instr, initial_instr);
                 return initial_instr;
@@ -848,7 +836,6 @@ MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR) {
 
     }
 
-    printf("Not found local\n\n");
     return initial_instr;
 
 }
