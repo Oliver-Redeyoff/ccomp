@@ -5,9 +5,13 @@
 #include "C.tab.h"
 #include "tac_generator.h"
 
+BASIC_BLOCK* root_BB;
+
 TOKEN* return_reg_token;
 TOKEN* parent_block_token;
 char* built_in_functions_tac[3] = {"print_string", "print_int", "read_int"};
+
+TAC_BLOCK_DELIMITER* current_loop_block;
 
 
 // Entry point of TAC generation
@@ -18,6 +22,9 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
         printf("ERROR: could not allocate memory for root basic block\n");
         exit(1);
     }
+    root_BB = root_Basic_Block;
+
+    current_loop_block = NULL;
 
     // instantiate single return_reg
     return_reg_token = (TOKEN*)malloc(sizeof(TOKEN));
@@ -172,16 +179,12 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             break;
 
         case BREAK: {
-            TAC* break_tac = (TAC*)malloc(sizeof(TAC));
-            break_tac->type = BREAK_TAC_TYPE;
-            add_TAC(break_tac, current_BB);
+            break_template(current_node, current_BB);
             break;
         }
 
         case CONTINUE: {
-            TAC* continue_tac = (TAC*)malloc(sizeof(TAC));
-            continue_tac->type = CONTINUE_TAC_TYPE;
-            add_TAC(continue_tac, current_BB);
+            continue_template(current_node, current_BB);
             break;
         }
 
@@ -770,7 +773,7 @@ void function_call_argument_buffer_rec(NODE* current_node, BASIC_BLOCK* current_
 
 }
 
-// Adds return TAC to current basaic block
+// Adds return TAC to current basic block
 void return_template(NODE* return_node, BASIC_BLOCK* current_BB) {
 
     // get token containing return value
@@ -932,7 +935,6 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     new_tac->v.tac_if = *tac_if;
     add_TAC(new_tac, current_BB);
 
-
     // indicate start of new block
     TAC_BLOCK_DELIMITER* tac_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_block_delimiter->block_type = WHILE_BLOCK_TYPE;
@@ -948,8 +950,15 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     // update current parent block token
     parent_block_token = loop_token;
 
+    //  update current loop name
+    TAC_BLOCK_DELIMITER* previous_loop_block = current_loop_block;
+    current_loop_block = tac_block_delimiter;
+
     // add body of while block
     map_to_TAC(while_node->right, current_BB);
+
+    // restore old loop name
+    current_loop_block = previous_loop_block;
 
     // create new TAC for block end indicator
     TAC* block_end_tac = (TAC*)malloc(sizeof(TAC));
@@ -971,6 +980,86 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     return;
 
 }
+
+// Adds TAC to continue to next iteration of loop
+void continue_template(NODE* continue_node, BASIC_BLOCK* current_BB) {
+
+    // create new TAC for block end indicator
+    TAC* block_end_tac = (TAC*)malloc(sizeof(TAC));
+    block_end_tac->type = BLOCK_END_TAC_TYPE;
+    block_end_tac->v.tac_block_delimiter = *current_loop_block;
+    add_TAC(block_end_tac, current_BB);
+
+    // add goto loop
+    TAC* loop_goto = generate_goto(current_loop_block->name);
+    add_TAC(loop_goto, current_BB);
+
+    return;
+
+}
+
+// Adds TAC to break out of loop
+void break_template(NODE* break_node, BASIC_BLOCK* current_BB) {
+
+    // Find the label to go to the code after the loop
+    BASIC_BLOCK* current_search_BB = root_BB;
+    TAC* current_search_TAC = current_BB->leader;
+    TOKEN* after_loop_label;
+    int found_label = 0;
+    while (found_label == 0) {
+
+        current_search_TAC = current_BB->leader;
+
+        while (found_label == 0) {
+            
+            if (current_search_TAC == NULL) {
+                break;
+            }
+
+            // the if before the loop block will contain the label to jump to
+            if (current_search_TAC->type == IF_TAC_TYPE) {
+                after_loop_label = current_search_TAC->v.tac_if.jump_label;
+            }
+
+            // once we reach the start of the loop, the correct label to jump to
+            // should be stored in after_loop_label
+            if (current_search_TAC->type == BLOCK_START_TAC_TYPE) {
+                if (current_search_TAC->v.tac_block_delimiter.name == current_loop_block->name) {
+                    found_label = 1;
+                    break;
+                }
+            }
+
+            if (current_search_TAC->next == NULL) {
+                break;
+            } else {
+                current_search_TAC = current_search_TAC->next;
+            }
+
+        }
+
+        if (current_search_BB->next == NULL) {
+            break;
+        } else {
+            current_search_BB = current_search_BB->next;
+        }
+
+    }
+
+    // create new TAC for block end indicator
+    TAC* block_end_tac = (TAC*)malloc(sizeof(TAC));
+    block_end_tac->type = BLOCK_END_TAC_TYPE;
+    block_end_tac->v.tac_block_delimiter = *current_loop_block;
+    add_TAC(block_end_tac, current_BB);
+
+    // add goto loop
+    TAC* loop_goto = generate_goto(after_loop_label);
+    add_TAC(loop_goto, current_BB);
+    
+    return;
+
+}
+
 
 
 // Add a new Basic Block to the end of the linked list of Basic Blocks

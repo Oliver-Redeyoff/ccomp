@@ -66,13 +66,48 @@ loop_1:
   lw $t0, 8($t0)
   la $t0, 12($t0)
   lw $t6, 0($t0)
-  li $t7, 1
-  add $t8, $t6, $t7
+  li $t7, 4
+  seq $t8, $t6, $t7
+  seq $t9, $t8, 0
+  beq $t9, 1, else_1
+if_1:
+
+  li $a0, 12
+  li $v0, 9
+  syscall
+  sw $fp, 0($v0)
+  sw $fp, 8($v0)
+  move $fp, $v0
+
+  lw $fp, 0($fp)
+  j next_1
+
+  lw $fp, 0($fp)
+  j next_2
+else_1:
+
+  li $a0, 12
+  li $v0, 9
+  syscall
+  sw $fp, 0($v0)
+  sw $fp, 8($v0)
+  move $fp, $v0
+
+  lw $fp, 0($fp)
+  j next_2
+next_2:
+  # load memory address into register
+  move $t0, $fp
+  lw $t0, 8($t0)
+  la $t0, 12($t0)
+  lw $s0, 0($t0)
+  li $s1, 1
+  add $s2, $s0, $s1
   # store register value into memory address
   move $t0, $fp
   lw $t0, 8($t0)
   la $t0, 12($t0)
-  sw $t8, 0($t0)
+  sw $s2, 0($t0)
   # calling builtin function
   move $t0, $fp
   lw $t0, 8($t0)
@@ -88,8 +123,8 @@ loop_1:
   lw $fp, 0($fp)
   j loop_1
 next_1:
-  li $t9, 1
-  move $v0, $t9
+  li $s3, 1
+  move $v0, $s3
 
   move $t0, $fp
   lw $fp, 0($t0)

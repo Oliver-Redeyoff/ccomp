@@ -166,14 +166,6 @@ void print_tac(BASIC_BLOCK* current_BB) {
           break;
         }
 
-        case BREAK_TAC_TYPE:
-          printf("break\n");
-          break;
-
-        case CONTINUE_TAC_TYPE:
-          printf("continue\n");
-          break;
-
         case RETURN_TAC_TYPE:
           printf("return\n");
           break;
@@ -359,16 +351,16 @@ int main(int argc, char** argv) {
   // Parse inputed program into AST
   yyparse();
   tree = ans;
-  print_tree(tree);
+  //print_tree(tree);
 
 
   VALUE* result = interpret(tree);
   
   BASIC_BLOCK* root_BB = generate_TAC(tree);
-  print_tac(root_BB);
+  //print_tac(root_BB);
   
   MIPS_PROGRAM* program = generate_MIPS(root_BB);
-  print_mips(program);
+  //print_mips(program);
 
   // Generate MIPS asm file
   generate_asm(program);

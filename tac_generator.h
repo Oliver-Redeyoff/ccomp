@@ -18,10 +18,8 @@ enum TAC_TYPE {
     FUNCTION_CALL_TAC_TYPE = 6,
     BUILTIN_CALL_TAC_TYPE = 7,
     IF_TAC_TYPE = 8,
-    BREAK_TAC_TYPE = 9,
-    CONTINUE_TAC_TYPE = 10,
-    RETURN_TAC_TYPE = 11,
-    EXIT_PROGRAM_TAC_TYPE = 12
+    RETURN_TAC_TYPE = 9,
+    EXIT_PROGRAM_TAC_TYPE = 10
 };
 
 enum BUILTIN_FUNCTION_TYPE {
@@ -139,6 +137,8 @@ void return_template(NODE* return_node, BASIC_BLOCK* current_BB);
 
 void if_template(NODE* if_node, BASIC_BLOCK* current_BB);
 void while_template(NODE* while_node, BASIC_BLOCK* current_BB);
+void continue_template(NODE* continue_node, BASIC_BLOCK* current_BB);
+void break_template(NODE* break_node, BASIC_BLOCK* current_BB);
 
 BASIC_BLOCK* append_Basic_Block(BASIC_BLOCK* current_block);
 BASIC_BLOCK* insert_Basic_Block(BASIC_BLOCK* current_block);

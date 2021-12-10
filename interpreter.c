@@ -240,6 +240,7 @@ void while_statement(NODE* while_node, FRAME* current_frame) {
 
     // if continue interupt, go to next loop
     if (global_interupt == CONTINUE_INTERUPT) {
+      global_interupt = NO_INTERUPT;
       continue;
     }
 
