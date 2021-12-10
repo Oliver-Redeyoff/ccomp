@@ -4,6 +4,9 @@ int main(void) {
         print_int(x);
         print_string(", ");
         x = x + 1;
+        if (x == 4) {
+            break;
+        }
     }
     return 1;
 }

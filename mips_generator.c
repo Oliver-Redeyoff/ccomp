@@ -348,7 +348,7 @@ MIPS_INSTR* function_call_MIPS_template(TAC* function_call_TAC) {
     sprintf(initial_instr->instr_str, "  # calling function, loading it's lexical scope as first argument");
 
     // get address in memory of the closure stored in the activation record
-    AR* containing_block_AR = get_containing_AR(function_call_TAC);
+    AR* containing_block_AR = get_containing_AR(function_call_TAC, ANY_BLOCK_TYPE);
     MIPS_INSTR* get_addr_instr = get_local_address(function_call_tac->name, containing_block_AR);
     append_instr(get_addr_instr, initial_instr);
 
@@ -410,7 +410,7 @@ MIPS_INSTR* builtin_call_MIPS_template(TAC* builtin_call_TAC) {
     }
     else if (builtin_call->type == PRINT_INT_BUILTIN_FUNCTION_TYPE) {
         // first load int address
-        AR* containing_block_AR = get_containing_AR(builtin_call_TAC);
+        AR* containing_block_AR = get_containing_AR(builtin_call_TAC, ANY_BLOCK_TYPE);
         MIPS_INSTR* get_addr_instr = get_local_address(builtin_call->argument, containing_block_AR);
         append_instr(get_addr_instr, initial_instr);
         // now do the syscall
@@ -444,10 +444,10 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
     MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
 
     // get containing block's AR
-    AR* containing_AR = get_containing_AR(return_TAC);
+    AR* containing_AR = get_containing_AR(return_TAC, ANY_BLOCK_TYPE);
     // get containing function block's AR
-    AR* containing_function_AR = get_containing_function_AR(return_TAC);
-    // get path from containing_AR (current fp) to containing function AR so that we can use it's caller's PC and FP
+    AR* containing_function_AR = get_containing_AR(return_TAC, FUNCTION_BLOCK_TYPE);
+    // get path from containing AR (current fp) to containing function AR so that we can use it's caller's PC and FP
     MIPS_INSTR* get_addr_intr = get_AR_address(containing_function_AR, containing_AR);
     append_instr(get_addr_intr, initial_instr);
 
@@ -470,7 +470,7 @@ MIPS_INSTR* return_MIPS_template(TAC* return_TAC) {
 
 }
 
-// Map operation tac to mips
+// Map operation tac to MIPS
 MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC) {
 
     MIPS_INSTR* new_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
@@ -496,7 +496,7 @@ MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC) {
             if (is_register(dest) == 1 && src1->type == IDENTIFIER) {
                 sprintf(new_instr->instr_str, "  # load memory address into register");
                 // get AR to start looking in
-                AR* current_AR = get_containing_AR(operation_TAC);
+                AR* current_AR = get_containing_AR(operation_TAC, ANY_BLOCK_TYPE);
                 // load address of local in $t0
                 MIPS_INSTR* load_local_addr_instr = get_local_address(src1, current_AR);
                 append_instr(load_local_addr_instr, new_instr);
@@ -517,7 +517,7 @@ MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC) {
             if (dest->type == IDENTIFIER && is_register(src1)) {
                 sprintf(new_instr->instr_str, "  # store register value into memory address");
                 // get AR to start looking in
-                AR* current_AR = get_containing_AR(operation_TAC);
+                AR* current_AR = get_containing_AR(operation_TAC, ANY_BLOCK_TYPE);
                 // load address of local in $t0
                 MIPS_INSTR* store_local_addr_instr = get_local_address(dest, current_AR);
                 append_instr(store_local_addr_instr, new_instr);
@@ -693,7 +693,7 @@ int get_AR_size(AR* activation_record) {
 }
 
 // Search for TAC's containing block's AR
-AR* get_containing_AR(TAC* search_TAC) {
+AR* get_containing_AR(TAC* search_TAC, int block_type) {
 
     TAC* current_TAC = get_next_TAC(NULL);
     AR* current_AR = NULL;
@@ -705,43 +705,21 @@ AR* get_containing_AR(TAC* search_TAC) {
         }
 
         if (current_TAC->type == BLOCK_START_TAC_TYPE) {
-            current_AR = get_AR(current_TAC->v.tac_block_delimiter.name);
+            TAC_BLOCK_DELIMITER* delimiter = &current_TAC->v.tac_block_delimiter;
+            if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {
+                current_AR = get_AR(current_TAC->v.tac_block_delimiter.name);
+            }
         }
         else if (current_TAC->type == BLOCK_END_TAC_TYPE) {
-            current_AR = current_AR->lexical_parent_AR;
+            TAC_BLOCK_DELIMITER* delimiter = &current_TAC->v.tac_block_delimiter;
+            if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {
+                current_AR = current_AR->lexical_parent_AR;
+            }
         }
 
         if (current_TAC == search_TAC) {
             //printf("found current AR: %s\n", current_AR->block_name->lexeme);
             return current_AR;
-        }
-
-        current_TAC = get_next_TAC(current_TAC);
-
-    }
-
-    return NULL;
-
-}
-
-// Search for TAC's containing functional block's AR
-AR* get_containing_function_AR(TAC* search_TAC) {
-
-    TAC* current_TAC = get_next_TAC(NULL);
-    AR* current_AR = NULL;
-
-    while (current_TAC != NULL) {
-
-        if (current_TAC == NULL) {
-            break;
-        }
-
-        if (current_TAC == search_TAC) {
-            return current_AR;
-        }
-
-        if (current_TAC->type == BLOCK_START_TAC_TYPE && current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
-            current_AR = get_AR(current_TAC->v.tac_block_delimiter.name);
         }
 
         current_TAC = get_next_TAC(current_TAC);

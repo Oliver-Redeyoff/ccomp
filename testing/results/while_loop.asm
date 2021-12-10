@@ -84,12 +84,45 @@ loop_1:
   lw $t0, 8($t0)
   la $t0, 12($t0)
   sw $t8, 0($t0)
+  # load memory address into register
+  move $t0, $fp
+  lw $t0, 8($t0)
+  la $t0, 12($t0)
+  lw $t9, 0($t0)
+  li $s0, 4
+  seq $s1, $t9, $s0
+  seq $s2, $s1, 0
+  beq $s2, 1, else_1
+if_1:
+
+  li $a0, 12
+  li $v0, 9
+  syscall
+  sw $fp, 0($v0)
+  sw $fp, 8($v0)
+  move $fp, $v0
+
+
+  lw $fp, 0($fp)
+  j next_2
+else_1:
+
+  li $a0, 12
+  li $v0, 9
+  syscall
+  sw $fp, 0($v0)
+  sw $fp, 8($v0)
+  move $fp, $v0
+
+  lw $fp, 0($fp)
+  j next_2
+next_2:
 
   lw $fp, 0($fp)
   j loop_1
 next_1:
-  li $t9, 1
-  move $v0, $t9
+  li $s3, 1
+  move $v0, $s3
 
   move $t0, $fp
   lw $fp, 0($t0)

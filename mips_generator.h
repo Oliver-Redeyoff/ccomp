@@ -59,7 +59,7 @@ MIPS_INSTR* operation_MIPS_template(TAC* operation_TAC);
 
 AR* get_AR(TOKEN* search_token);
 int get_AR_size(AR* activation_record);
-AR* get_containing_AR(TAC* search_TAC);
+AR* get_containing_AR(TAC* search_TAC, int block_type);
 AR* get_containing_function_AR(TAC* search_TAC);
 MIPS_INSTR* get_AR_address(AR* search_AR, AR* initial_AR);
 MIPS_INSTR* get_local_address(TOKEN* search_token, AR* initial_AR);

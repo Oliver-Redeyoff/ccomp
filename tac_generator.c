@@ -171,6 +171,20 @@ void map_to_TAC(NODE* current_node, BASIC_BLOCK* current_BB) {
             while_template(current_node, current_BB);
             break;
 
+        case BREAK: {
+            TAC* break_tac = (TAC*)malloc(sizeof(TAC));
+            break_tac->type = BREAK_TAC_TYPE;
+            add_TAC(break_tac, current_BB);
+            break;
+        }
+
+        case CONTINUE: {
+            TAC* continue_tac = (TAC*)malloc(sizeof(TAC));
+            continue_tac->type = CONTINUE_TAC_TYPE;
+            add_TAC(continue_tac, current_BB);
+            break;
+        }
+
         default:
             printf("Node type %d not recognised\n", node_type);
             exit(1);
