@@ -170,7 +170,8 @@ if_1:
   lw $t0 4($t0)
   jr $t0
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_1
 else_1:
 
@@ -181,7 +182,8 @@ else_1:
   sw $fp, 8($v0)
   move $fp, $v0
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_1
 next_1:
   # load memory address into register

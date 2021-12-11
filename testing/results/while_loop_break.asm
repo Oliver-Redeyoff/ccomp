@@ -79,10 +79,13 @@ if_1:
   sw $fp, 8($v0)
   move $fp, $v0
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $t0, 8($t0)
+  lw $fp, 0($t0)
   j next_1
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_2
 else_1:
 
@@ -93,7 +96,8 @@ else_1:
   sw $fp, 8($v0)
   move $fp, $v0
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_2
 next_2:
   # load memory address into register
@@ -120,7 +124,8 @@ next_2:
   li $v0 4
   syscall
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j loop_1
 next_1:
   li $s3, 1

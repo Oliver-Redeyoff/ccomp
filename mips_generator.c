@@ -307,12 +307,16 @@ MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC) {
     TAC_BLOCK_DELIMITER* block_end = &block_end_TAC->v.tac_block_delimiter;
 
     MIPS_INSTR* initial_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
+    
+    // get containing block's AR
+    AR* containing_AR = get_containing_AR(block_end_TAC, ANY_BLOCK_TYPE);
+    // get containing function block's AR
+    AR* end_block_AR = get_AR(block_end->name);
+    // get path from containing AR (current fp) to containing function AR so that we can use it's caller's PC and FP
+    MIPS_INSTR* get_addr_intr = get_AR_address(end_block_AR, containing_AR);
+    append_instr(get_addr_intr, initial_instr);
 
     if (block_end->block_type == FUNCTION_BLOCK_TYPE) {
-        // store frame pointer in temp
-        MIPS_INSTR* store_temp_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(store_temp_fp_instr->instr_str, "  move $t0, $fp");
-        append_instr(store_temp_fp_instr, initial_instr);
 
         // restore frame pointer to the caller's fp
         MIPS_INSTR* restore_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
@@ -331,7 +335,7 @@ MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC) {
     } else {
         // restore frame pointer to the parent's frame pointer
         MIPS_INSTR* restore_fp_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($fp)");
+        sprintf(restore_fp_instr->instr_str, "  lw $fp, 0($t0)");
         append_instr(restore_fp_instr, initial_instr);
     }
 
@@ -704,22 +708,25 @@ AR* get_containing_AR(TAC* search_TAC, int block_type) {
             break;
         }
 
+        if (current_TAC == search_TAC) {
+            //printf("found current AR: %s\n", current_AR->block_name->lexeme);
+            return current_AR;
+        }
+
         if (current_TAC->type == BLOCK_START_TAC_TYPE) {
             TAC_BLOCK_DELIMITER* delimiter = &current_TAC->v.tac_block_delimiter;
-            if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {
+            if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {\
                 current_AR = get_AR(current_TAC->v.tac_block_delimiter.name);
             }
         }
         else if (current_TAC->type == BLOCK_END_TAC_TYPE) {
-            TAC_BLOCK_DELIMITER* delimiter = &current_TAC->v.tac_block_delimiter;
-            if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {
-                current_AR = current_AR->lexical_parent_AR;
+            AR* block_end_AR = get_AR(current_TAC->v.tac_block_delimiter.name);
+            if (block_end_AR == current_AR) {
+                TAC_BLOCK_DELIMITER* delimiter = &current_TAC->v.tac_block_delimiter;
+                if (delimiter->block_type == block_type || block_type == ANY_BLOCK_TYPE) {
+                    current_AR = current_AR->lexical_parent_AR;
+                }
             }
-        }
-
-        if (current_TAC == search_TAC) {
-            //printf("found current AR: %s\n", current_AR->block_name->lexeme);
-            return current_AR;
         }
 
         current_TAC = get_next_TAC(current_TAC);

@@ -66,7 +66,8 @@ if_1:
   li $v0 4
   syscall
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_1
 else_1:
 
@@ -81,7 +82,8 @@ else_1:
   li $v0 4
   syscall
 
-  lw $fp, 0($fp)
+  move $t0, $fp
+  lw $fp, 0($t0)
   j next_1
 next_1:
   li $t6, 1
