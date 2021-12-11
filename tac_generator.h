@@ -1,7 +1,9 @@
 #ifndef _TAC_H_ 
 #define _TAC_H_
 
+
 #include "nodes.h"
+
 
 enum REGISTER_TOKEN_TYPE {
     RETURN_REG_IDENTIFIER = 255,
@@ -55,6 +57,7 @@ enum ASSIGNEMENT_TYPE {
     INT_DECLARATION_ASSIGNEMENT_TYPE = 1,
     CLOSURE_DECLARATION_ASSIGNEMENT_TYPE =2
 };
+
 
 typedef struct tac_label {
     TOKEN* name;
@@ -153,5 +156,6 @@ TOKEN* new_loop();
 
 TAC* generate_label(TOKEN* name);
 TAC* generate_goto(TOKEN* name);
+
 
 #endif

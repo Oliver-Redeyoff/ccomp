@@ -17,9 +17,9 @@ extern void init_symbtable(void);
 
 char program_name[50];
 
-/////////////////////////
-// Visualisation stuff //
-/////////////////////////
+/////////////////////////////
+// Visualisation functions //
+/////////////////////////////
 char *named(int t) {
     static char b[100];
     if (isgraph(t) || t==' ') {
@@ -482,7 +482,6 @@ int main(int argc, char** argv) {
 
   if (argc == 2) {
     sprintf(program_name, "%s", argv[1]);
-    //yydebug = 1;
   } else {
     sprintf(program_name, "noname");
   }
@@ -492,19 +491,19 @@ int main(int argc, char** argv) {
   // Parse inputed program into AST
   yyparse();
   tree = ans;
-  //print_tree(tree);
 
-
+  // Interprete abstract syntax tree
   VALUE* result = interpret(tree);
   
+  // Generate intermediate code
   BASIC_BLOCK* root_BB = generate_TAC(tree);
+  // Print intermediate code into file
   generate_tac_file(root_BB);
-  //print_tac(root_BB);
   
+  // Generate MIPS machine code
   MIPS_PROGRAM* program = generate_MIPS(root_BB);
-  // Generate MIPS asm file
+  // Print MIPS machine code into file
   generate_asm(program);
-  //print_mips(program);
 
 
   return 0;

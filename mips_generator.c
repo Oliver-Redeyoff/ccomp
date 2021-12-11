@@ -10,6 +10,7 @@ BASIC_BLOCK* root_BB;
 MIPS_PROGRAM* program;
 AR* AR_list;
 
+
 // Entry point for MIPS generation
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root) {
 
@@ -46,7 +47,7 @@ void MIPS_loop(BASIC_BLOCK* root_BB) {
 
 }
 
-// map a specific TAC to MIPS
+// Map a specific TAC to MIPS
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC) {
 
     int tac_type = current_TAC->type;
@@ -919,7 +920,7 @@ int is_register(TOKEN* token) {
     }
 }
 
-// gets string for name of a register in MIPS
+// Gets string for name of a register in MIPS
 char* get_register_name(TOKEN* register_token) {
     
     char register_name[5];

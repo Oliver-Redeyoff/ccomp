@@ -1,8 +1,10 @@
 #ifndef _INTERPRETER_H_ 
 #define _INTERPRETER_H_
 
+
 #include <stdlib.h>
 #include "nodes.h"
+
 
 enum blockType {
   GLOBAL_BLOCK = 0,
@@ -23,6 +25,7 @@ enum valueType {
   INTEGER_TYPE = 1,
   CLOSURE_TYPE = 2
 };
+
 
 typedef struct value {
   int          type;
@@ -48,7 +51,13 @@ typedef struct closure {
   NODE* declaration;
 } CLOSURE;
 
+
 extern TOKEN* lookup_token(char*);
+
+VALUE* interpret(NODE* tree);
+void interpret_rec(NODE* current_node, FRAME* current_frame);
+VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame);
+void call_main(FRAME* root_frame);
 
 void declare_function(NODE* function_node, FRAME* current_frame);
 VALUE* call_function(TOKEN* function_name_token, NODE* argument_values_node, FRAME* current_frame);
@@ -66,15 +75,12 @@ void declare_variable(TOKEN* type_token, TOKEN* name_token, NODE* value_node, FR
 void assign_variables(NODE* initial_node, NODE* current_node, FRAME* current_frame);
 void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame);
 
-void interpret_rec(NODE* current_node, FRAME* current_frame);
-VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame);
-void call_main(FRAME* root_frame);
-VALUE* interpret(NODE* tree);
 
 FRAME* extend_frame(FRAME* frame);
 BINDING* add_binding(FRAME* frame, TOKEN* name_token, VALUE* val);
 
 BINDING* find_binding(TOKEN* search_token, FRAME* frame);
 VALUE* get_value(TOKEN* search_token, int search_type, FRAME* frame);
+
 
 #endif

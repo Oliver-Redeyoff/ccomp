@@ -256,7 +256,7 @@ void split_BB(TAC* current_TAC, BASIC_BLOCK* current_BB) {
 
 }
 
-// main needs to be renamed to main1 so that it is not confused with actuall entry point function main
+// Main needs to be renamed to main1 so that it is not confused with actuall entry point function main
 void rename_block(BASIC_BLOCK* root_BB, char* search_name, char* new_name) {
 
     BASIC_BLOCK* current_BB = root_BB;
@@ -1059,7 +1059,6 @@ void break_template(NODE* break_node, BASIC_BLOCK* current_BB) {
     return;
 
 }
-
 
 
 // Add a new Basic Block to the end of the linked list of Basic Blocks

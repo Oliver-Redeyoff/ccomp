@@ -1,8 +1,10 @@
 #ifndef _MIPS_H_ 
 #define _MIPS_H_
 
+
 #include "nodes.h"
 #include "tac_generator.h"
+
 
 enum LOCAl_TYPE {
     INT_LOCAL_TYPE = 1,
@@ -12,6 +14,7 @@ enum LOCAl_TYPE {
 enum MIPS_DATA_TYPE {
     TEXT_DATA_TYPE = 1
 };
+
 
 typedef struct local {
     int type;
@@ -45,6 +48,7 @@ typedef struct mips_program {
     MIPS_DATA* data;
 } MIPS_PROGRAM;
 
+
 MIPS_PROGRAM* generate_MIPS(BASIC_BLOCK* root_BB);
 void MIPS_loop(BASIC_BLOCK* root_BB);
 MIPS_INSTR* map_to_MIPS(TAC* current_TAC);
@@ -75,5 +79,6 @@ void append_instr(MIPS_INSTR* new_instr, MIPS_INSTR* instr_chain);
 void append_instr_to_program(MIPS_INSTR* new_instr);
 void append_data(MIPS_DATA* new_data, MIPS_DATA* data_chain);
 char* append_data_to_program(MIPS_DATA* new_data);
+
 
 #endif

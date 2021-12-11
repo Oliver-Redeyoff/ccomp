@@ -11,6 +11,264 @@ int global_interupt = 0;
 char* built_in_functions[3] = {"print_string", "print_int", "read_int"};
 
 
+// Entry point for interpreter
+VALUE* interpret(NODE* tree) {
+
+  // Create root frame
+  FRAME* root_frame = (FRAME*)malloc(sizeof(FRAME));
+
+  // Populate root frame with global bindings
+  interpret_rec(tree, root_frame);
+
+  // Add global bindings for builtin functions
+  int len = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
+  for (int i=0 ; i<len ; i++) {
+    TOKEN* builtin_token = lookup_token(built_in_functions[i]);
+    VALUE* builtin_closure_value = (VALUE*)malloc(sizeof(VALUE));
+    builtin_closure_value->type = CLOSURE_TYPE;
+    add_binding(root_frame, builtin_token, builtin_closure_value);
+  }
+
+  // Call main method
+  call_main(root_frame);
+
+  if (global_interupt == ERROR_INTERUPT) {
+    printf("ERROR: %s\n", global_error);
+  }
+
+  return NULL;
+
+}
+
+// Recursively interpret starting at a given node
+void interpret_rec(NODE* current_node, FRAME* current_frame) {
+
+  if (global_interupt != NO_INTERUPT) {
+    return;
+  }
+
+  int node_type = current_node->type;
+
+  switch (node_type) {
+
+    case ';':
+      interpret_rec(current_node->left, current_frame);
+      interpret_rec(current_node->right, current_frame);
+      break;
+
+    case 'D':
+      declare_function(current_node, current_frame);
+      break;
+
+    case '~':
+      if (current_node->left->type == LEAF) {
+        declare_variables(current_node, current_node->right, (TOKEN*)current_node->left->left, current_frame);
+      } else {
+        interpret_rec(current_node->left, current_frame);
+        interpret_rec(current_node->right, current_frame);
+      }
+      break;
+
+    case '=':
+      assign_variables(current_node, current_node, current_frame);
+      break;
+
+    case ',':
+      assign_variables(current_node, current_node, current_frame);
+      break;
+
+    case APPLY:
+      call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
+      break;
+
+    case RETURN: {
+      VALUE* return_value = evaluate_expression(current_node->left, current_frame);
+      global_interpret_result = return_value;
+      global_interupt = RETURN_INTERUPT;
+      break;
+
+    case IF:
+      if_statement(current_node, current_frame);
+      break;
+
+    case WHILE:
+      while_statement(current_node, current_frame);
+      break;
+
+    case BREAK:
+      global_interupt = BREAK_INTERUPT;
+      break;
+
+    case CONTINUE:
+      global_interupt = CONTINUE_INTERUPT;
+      break;
+      
+    }
+
+    default:
+      strcpy(global_error, "Token type is not recognised by interpreter");
+      global_interupt = ERROR_INTERUPT;
+      return;
+  }
+
+  return;
+
+}
+
+// Evaluates an expression and returns the value, can probably merge this into interpret though
+VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame) {
+
+  if (current_node == NULL) {
+    return NULL;
+  }
+
+  int node_type = current_node->type;
+  VALUE* res = (VALUE*)malloc(sizeof(VALUE));
+
+  switch (node_type) {
+
+    case LEAF: {
+      TOKEN* value_token = (TOKEN*)current_node->left;
+      if (value_token->type == CONSTANT) {
+        res->type = INTEGER_TYPE;
+        res->v.integer = value_token->value;
+        return res;
+      }
+      else if (value_token->type == IDENTIFIER) {
+        return get_value(value_token, ANY_TYPE, current_frame);
+      }
+      else {
+      }
+    }
+
+    case '+': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer + right_res->v.integer;
+      break;
+    }
+
+    case '-': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer - right_res->v.integer;
+      break;
+    }
+
+    case '*': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer * right_res->v.integer;
+      break;
+    }
+
+    case '/': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer / right_res->v.integer;
+      break;
+    }
+
+    case '%': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer % right_res->v.integer;
+      break;
+    }
+
+    case EQ_OP: {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer == right_res->v.integer;
+      break;
+    }
+
+    case NE_OP: {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer != right_res->v.integer;
+      break;
+    }
+
+    case '>': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer > right_res->v.integer;
+      break;
+    }
+
+    case GE_OP: {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer >= right_res->v.integer;
+      break;
+    }
+
+    case '<': {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer < right_res->v.integer;
+      break;
+    }
+
+    case LE_OP: {
+      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
+      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
+      res->type = INTEGER_TYPE;
+      res->v.integer = left_res->v.integer <= right_res->v.integer;
+      break;
+    }
+    
+    case APPLY:
+      return call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
+
+    default:
+      printf("erroring here %c\n", node_type);
+      strcpy(global_error, "Operator is not recognised");
+      global_interupt = ERROR_INTERUPT;
+      return NULL;
+
+  }
+
+  return res;
+
+}
+
+// Finds main method and calls it
+void call_main(FRAME* root_frame) {
+
+  BINDING* current_binding = root_frame->bindings;
+
+  while (TRUE) {
+    if (strcmp(current_binding->name_token->lexeme, "main") == 0){
+      call_function(current_binding->name_token, NULL, root_frame);
+      break;
+    } else {
+      if (current_binding->next == NULL) {
+        strcpy(global_error, "No main function is defined in root scope");
+        global_interupt = ERROR_INTERUPT;
+        return;
+      } else {
+        current_binding = current_binding->next;
+      }
+    }
+  }
+
+  return;
+
+}
+
+
 // Creates a new closure in given frame
 void declare_function(NODE* function_node, FRAME* current_frame) {
 
@@ -45,7 +303,7 @@ void declare_function(NODE* function_node, FRAME* current_frame) {
 
 }
 
-// check if function name is the same as an existing inbuilt one
+// Check if function name is the same as an existing inbuilt one
 int is_inbuilt_function(TOKEN* function_name_token) {
 
   int len = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
@@ -388,265 +646,6 @@ void assign_variable(TOKEN* name_token, NODE* value_node, FRAME* current_frame) 
   return;
 
 }
-
-
-// Recursively interpret starting at a given node
-void interpret_rec(NODE* current_node, FRAME* current_frame) {
-
-  if (global_interupt != NO_INTERUPT) {
-    return;
-  }
-
-  int node_type = current_node->type;
-
-  switch (node_type) {
-
-    case ';':
-      interpret_rec(current_node->left, current_frame);
-      interpret_rec(current_node->right, current_frame);
-      break;
-
-    case 'D':
-      declare_function(current_node, current_frame);
-      break;
-
-    case '~':
-      if (current_node->left->type == LEAF) {
-        declare_variables(current_node, current_node->right, (TOKEN*)current_node->left->left, current_frame);
-      } else {
-        interpret_rec(current_node->left, current_frame);
-        interpret_rec(current_node->right, current_frame);
-      }
-      break;
-
-    case '=':
-      assign_variables(current_node, current_node, current_frame);
-      break;
-
-    case ',':
-      assign_variables(current_node, current_node, current_frame);
-      break;
-
-    case APPLY:
-      call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
-      break;
-
-    case RETURN: {
-      VALUE* return_value = evaluate_expression(current_node->left, current_frame);
-      global_interpret_result = return_value;
-      global_interupt = RETURN_INTERUPT;
-      break;
-
-    case IF:
-      if_statement(current_node, current_frame);
-      break;
-
-    case WHILE:
-      while_statement(current_node, current_frame);
-      break;
-
-    case BREAK:
-      global_interupt = BREAK_INTERUPT;
-      break;
-
-    case CONTINUE:
-      global_interupt = CONTINUE_INTERUPT;
-      break;
-      
-    }
-
-    default:
-      strcpy(global_error, "Token type is not recognised by interpreter");
-      global_interupt = ERROR_INTERUPT;
-      return;
-  }
-
-  return;
-
-}
-
-// Evaluates an expression and returns the value, can probably merge this into interpret though
-VALUE* evaluate_expression(NODE* current_node, FRAME* current_frame) {
-
-  if (current_node == NULL) {
-    return NULL;
-  }
-
-  int node_type = current_node->type;
-  VALUE* res = (VALUE*)malloc(sizeof(VALUE));
-
-  switch (node_type) {
-
-    case LEAF: {
-      TOKEN* value_token = (TOKEN*)current_node->left;
-      if (value_token->type == CONSTANT) {
-        res->type = INTEGER_TYPE;
-        res->v.integer = value_token->value;
-        return res;
-      }
-      else if (value_token->type == IDENTIFIER) {
-        return get_value(value_token, ANY_TYPE, current_frame);
-      }
-      else {
-      }
-    }
-
-    case '+': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer + right_res->v.integer;
-      break;
-    }
-
-    case '-': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer - right_res->v.integer;
-      break;
-    }
-
-    case '*': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer * right_res->v.integer;
-      break;
-    }
-
-    case '/': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer / right_res->v.integer;
-      break;
-    }
-
-    case '%': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer % right_res->v.integer;
-      break;
-    }
-
-    case EQ_OP: {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer == right_res->v.integer;
-      break;
-    }
-
-    case NE_OP: {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer != right_res->v.integer;
-      break;
-    }
-
-    case '>': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer > right_res->v.integer;
-      break;
-    }
-
-    case GE_OP: {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer >= right_res->v.integer;
-      break;
-    }
-
-    case '<': {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer < right_res->v.integer;
-      break;
-    }
-
-    case LE_OP: {
-      VALUE* left_res = evaluate_expression(current_node->left, current_frame);
-      VALUE* right_res = evaluate_expression(current_node->right, current_frame);
-      res->type = INTEGER_TYPE;
-      res->v.integer = left_res->v.integer <= right_res->v.integer;
-      break;
-    }
-    
-    case APPLY:
-      return call_function((TOKEN*)current_node->left->left, current_node->right, current_frame);
-
-    default:
-      printf("erroring here %c\n", node_type);
-      strcpy(global_error, "Operator is not recognised");
-      global_interupt = ERROR_INTERUPT;
-      return NULL;
-
-  }
-
-  return res;
-
-}
-
-// Finds main method and calls it
-void call_main(FRAME* root_frame) {
-
-  BINDING* current_binding = root_frame->bindings;
-
-  while (TRUE) {
-    if (strcmp(current_binding->name_token->lexeme, "main") == 0){
-      call_function(current_binding->name_token, NULL, root_frame);
-      break;
-    } else {
-      if (current_binding->next == NULL) {
-        strcpy(global_error, "No main function is defined in root scope");
-        global_interupt = ERROR_INTERUPT;
-        return;
-      } else {
-        current_binding = current_binding->next;
-      }
-    }
-  }
-
-  return;
-
-}
-
-// Entry point for interpreter
-VALUE* interpret(NODE* tree) {
-
-  // Create root frame
-  FRAME* root_frame = (FRAME*)malloc(sizeof(FRAME));
-
-  // Populate root frame with global bindings
-  interpret_rec(tree, root_frame);
-
-  // Add global bindings for builtin functions
-  int len = sizeof(built_in_functions) / sizeof(built_in_functions[0]);
-  for (int i=0 ; i<len ; i++) {
-    TOKEN* builtin_token = lookup_token(built_in_functions[i]);
-    VALUE* builtin_closure_value = (VALUE*)malloc(sizeof(VALUE));
-    builtin_closure_value->type = CLOSURE_TYPE;
-    add_binding(root_frame, builtin_token, builtin_closure_value);
-  }
-
-  // Call main method
-  call_main(root_frame);
-
-  if (global_interupt == ERROR_INTERUPT) {
-    printf("ERROR: %s\n", global_error);
-  }
-
-  return NULL;
-
-}
-
 
 
 // Add a new frame which extends a existing frame
