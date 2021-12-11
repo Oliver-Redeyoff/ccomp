@@ -1,5 +1,9 @@
 .DS_Store
 
+testing/mips_results
+testing/output
+testing/tac_results
+
 # Prerequisites
 *.d
 
