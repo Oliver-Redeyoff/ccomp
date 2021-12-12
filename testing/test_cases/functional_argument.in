@@ -1,6 +1,6 @@
 int main() {
     function fn1 = plus_one;
-    function fn2 = twice(plus_one);
+    function fn2 = twice(fn1);
     int x = fn2(2);
     print_int(x);
     return 0;

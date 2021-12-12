@@ -432,10 +432,7 @@ VALUE* input_int_builtin() {
   int c;
   while ((c = getchar()) != '\n' && c != EOF) { }
 
-  printf("User input : ");
   scanf("%d", &input_val);
-  //fgets(buf, 12, stdin);
-  printf("Input of user was %d\n", input_val);
 
   input->v.integer = input_val;
 

@@ -35,7 +35,8 @@
 			"stop_token": "c",
 			"tac_generator.h": "c",
 			"mips_generator.h": "c",
-			"interpreter.h": "c"
+			"interpreter.h": "c",
+			"nodes.h": "c"
 		}
 	}
 }
