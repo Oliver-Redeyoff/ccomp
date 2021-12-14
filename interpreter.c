@@ -478,7 +478,7 @@ void while_statement(NODE* while_node, FRAME* current_frame) {
 
     // if loop condition is false exit loop
     VALUE* loop_condition = evaluate_expression(while_node->left, current_frame);
-    if (loop_condition->v.integer == 0) {
+    if (loop_condition->v.integer != 1) {
       break;
     }
 
