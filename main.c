@@ -44,7 +44,7 @@ void generate_tac_file(BASIC_BLOCK* current_BB) {
           break;
 
         case BLOCK_START_TAC_TYPE:
-          fprintf(fp, "block %d start %s", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          fprintf(fp, "block %d start %s", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme);
           if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
             fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
           }
@@ -52,7 +52,7 @@ void generate_tac_file(BASIC_BLOCK* current_BB) {
           break;
 
         case BLOCK_END_TAC_TYPE:
-          fprintf(fp, "block %d end %s %d", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme, current_TAC->v.tac_block_delimiter.arity);
+          fprintf(fp, "block %d end %s", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme);
           if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
             fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
           }

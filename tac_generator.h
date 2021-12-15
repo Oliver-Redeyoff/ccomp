@@ -130,11 +130,9 @@ TOKEN* expression_template(NODE* current_node, BASIC_BLOCK* current_BB);
 TOKEN* generate_false_check(TOKEN* value_token, BASIC_BLOCK* current_BB);
 
 void function_declaration_template(NODE* current_node, BASIC_BLOCK* current_BB);
-int function_declaration_argument_count_rec(NODE* current_node);
 void function_declaration_argument_retrival_rec(NODE* current_node, BASIC_BLOCK* current_BB, int arg_count);
 
 void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB);
-int function_call_argument_count_rec(NODE* current_node);
 void function_call_argument_buffer_rec(NODE* current_node, BASIC_BLOCK* current_BB, int arg_count);
 void return_template(NODE* return_node, BASIC_BLOCK* current_BB);
 

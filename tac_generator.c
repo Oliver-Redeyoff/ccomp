@@ -39,7 +39,6 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
     TAC_BLOCK_DELIMITER* premain_declaration = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     premain_declaration->block_type = FUNCTION_BLOCK_TYPE;
     premain_declaration->name = premain_token;
-    premain_declaration->arity = 0;
     premain_declaration->parent_block_name = NULL;
     // create new TAC for function block start indicator
     TAC* premain_start_tac = (TAC*)malloc(sizeof(TAC));
@@ -57,7 +56,6 @@ BASIC_BLOCK* generate_TAC(NODE* tree) {
     // create new function call TAC
     TAC_FUNCTION_CALL* tac_function_call = (TAC_FUNCTION_CALL*)malloc(sizeof(TAC_FUNCTION_CALL));
     tac_function_call->name = main_token;
-    tac_function_call->arity = 0;
     // create new TAC
     TAC* new_tac = (TAC*)malloc(sizeof(TAC));
     new_tac->type = FUNCTION_CALL_TAC_TYPE;
@@ -561,12 +559,10 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
 
     TOKEN* function_name_token = (TOKEN*)D_node->left->right->left->left;
 
-    // put function name token and arity in function start TAC
-    int function_arity = function_declaration_argument_count_rec(D_node->left->right->right);
+    // put function name token in function start TAC
     TAC_BLOCK_DELIMITER* tac_function_declaration = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_function_declaration->block_type = FUNCTION_BLOCK_TYPE;
     tac_function_declaration->name = function_name_token;
-    tac_function_declaration->arity = function_arity;
     tac_function_declaration->parent_block_name = parent_block_token;
     // create new TAC for function block start indicator
     TAC* function_start_tac = (TAC*)malloc(sizeof(TAC));
@@ -596,28 +592,6 @@ void function_declaration_template(NODE* D_node, BASIC_BLOCK* current_BB) {
     parent_block_token = tac_function_declaration->parent_block_name;
 
     return;
-
-}
-
-// Recurse through function declaration and get argument count
-int function_declaration_argument_count_rec(NODE* current_node) {
-
-    if (current_node == NULL) {
-        return 0;
-    }
-
-    if (current_node->type == ',') {
-        // recurse over left and right
-        int arity_left = function_declaration_argument_count_rec(current_node->left);
-        int arity_right = function_declaration_argument_count_rec(current_node->right);
-
-        return 2 + arity_left + arity_right;
-    } 
-    else if (current_node->type == '~') {
-        return 1;
-    }
-
-    return 0;
 
 }
 
@@ -710,7 +684,6 @@ void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB) {
     // create new function call TAC
     TAC_FUNCTION_CALL* tac_function_call = (TAC_FUNCTION_CALL*)malloc(sizeof(TAC_FUNCTION_CALL));
     tac_function_call->name = function_name_token;
-    tac_function_call->arity = function_call_argument_count_rec(apply_node->right);
     // create new TAC
     TAC* new_tac = (TAC*)malloc(sizeof(TAC));
     new_tac->type = FUNCTION_CALL_TAC_TYPE;
@@ -718,27 +691,6 @@ void function_call_template(NODE* apply_node, BASIC_BLOCK* current_BB) {
     add_TAC(new_tac, current_BB);
 
     return;
-
-}
-
-// Recurse through function call to get count of arguments being passed
-int function_call_argument_count_rec(NODE* current_node) {
-
-    if (current_node == NULL) {
-        return 0;
-    }
-
-    if (current_node->type == ',') {
-        // recurse over left and right
-        int arity_left = function_call_argument_count_rec(current_node->left);
-        int arity_right = function_call_argument_count_rec(current_node->right);
-
-        return 2 + arity_left + arity_right;
-    } else {
-        return 1;
-    }
-
-    return 0;
 
 }
 
@@ -833,7 +785,6 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_if_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_if_block_delimiter->block_type = IF_BLOCK_TYPE;
     tac_if_block_delimiter->name = if_label_token;
-    tac_if_block_delimiter->arity = 0;
     tac_if_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* if_block_start_tac = (TAC*)malloc(sizeof(TAC));
@@ -874,7 +825,6 @@ void if_template(NODE* if_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_else_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_else_block_delimiter->block_type = IF_BLOCK_TYPE;
     tac_else_block_delimiter->name = else_label_token;
-    tac_else_block_delimiter->arity = 0;
     tac_else_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* else_block_start_tac = (TAC*)malloc(sizeof(TAC));
@@ -939,7 +889,6 @@ void while_template(NODE* while_node, BASIC_BLOCK* current_BB) {
     TAC_BLOCK_DELIMITER* tac_block_delimiter = (TAC_BLOCK_DELIMITER*)malloc(sizeof(TAC_BLOCK_DELIMITER));
     tac_block_delimiter->block_type = WHILE_BLOCK_TYPE;
     tac_block_delimiter->name = loop_token;
-    tac_block_delimiter->arity = 0;
     tac_block_delimiter->parent_block_name = parent_block_token;
     // create new TAC for block start indicator
     TAC* block_start_tac = (TAC*)malloc(sizeof(TAC));
