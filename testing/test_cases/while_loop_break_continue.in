@@ -2,7 +2,10 @@ int main() {
     int x = 0;
     while (x < 10) {
         x = x + 1;
-        if (x == 4) {
+        if (x == 7) {
+            break;
+        }
+        if (x == 2) {
             continue;
         }
         print_int(x);

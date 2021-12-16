@@ -1,4 +1,4 @@
-int main(void) {
+int main() {
     int x = fact(5);
     print_string("value of x : ");
     print_int(x);

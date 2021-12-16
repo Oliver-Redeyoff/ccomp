@@ -55,7 +55,7 @@ enum BLOCK_TYPE {
 enum ASSIGNEMENT_TYPE {
     NOT_DECLARATION_ASSIGNEMENT_TYPE = 0,
     INT_DECLARATION_ASSIGNEMENT_TYPE = 1,
-    CLOSURE_DECLARATION_ASSIGNEMENT_TYPE =2
+    CLOSURE_DECLARATION_ASSIGNEMENT_TYPE = 2
 };
 
 
@@ -78,13 +78,11 @@ typedef struct tac_operation {
 typedef struct tac_block_delimiter {
     int block_type;
     TOKEN* name;
-    int arity;
     TOKEN* parent_block_name;
 } TAC_BLOCK_DELIMITER;
 
 typedef struct tac_function_call {
     TOKEN* name;
-    int arity;
 } TAC_FUNCTION_CALL;
 
 typedef struct tac_builtin_call {

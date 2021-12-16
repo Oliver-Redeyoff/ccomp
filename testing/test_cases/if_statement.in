@@ -1,4 +1,4 @@
-int main(void) {
+int main() {
     int x = 1;
     if (x < 2) {
         print_string("x is less than 2");

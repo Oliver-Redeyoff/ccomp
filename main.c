@@ -36,26 +36,46 @@ void generate_tac_file(BASIC_BLOCK* current_BB) {
       switch (current_TAC->type) {
 
         case LABEL_TAC_TYPE: 
-          fprintf(fp, "label %s", current_TAC->v.tac_label.name->lexeme);
+          fprintf(fp, "label %s\n", current_TAC->v.tac_label.name->lexeme);
           break;
 
         case GOTO_TAC_TYPE: 
-          fprintf(fp, "goto %s", current_TAC->v.tac_label.name->lexeme);
+          fprintf(fp, "goto %s\n", current_TAC->v.tac_label.name->lexeme);
           break;
 
         case BLOCK_START_TAC_TYPE:
-          fprintf(fp, "block %d start %s", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme);
-          if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
-            fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          if (current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
+            fprintf(fp, "function ");
           }
+          else if (current_TAC->v.tac_block_delimiter.block_type == IF_BLOCK_TYPE) {
+            fprintf(fp, "if ");
+          }
+          else if (current_TAC->v.tac_block_delimiter.block_type == WHILE_BLOCK_TYPE) {
+            fprintf(fp, "while ");
+          }
+
+          fprintf(fp, "block start %s", current_TAC->v.tac_block_delimiter.name->lexeme);
+          // if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
+          //   fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          // }
           fprintf(fp, "\n");
           break;
 
         case BLOCK_END_TAC_TYPE:
-          fprintf(fp, "block %d end %s", current_TAC->v.tac_block_delimiter.block_type, current_TAC->v.tac_block_delimiter.name->lexeme);
-          if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
-            fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          if (current_TAC->v.tac_block_delimiter.block_type == FUNCTION_BLOCK_TYPE) {
+            fprintf(fp, "function ");
           }
+          else if (current_TAC->v.tac_block_delimiter.block_type == IF_BLOCK_TYPE) {
+            fprintf(fp, "if ");
+          }
+          else if (current_TAC->v.tac_block_delimiter.block_type == WHILE_BLOCK_TYPE) {
+            fprintf(fp, "while ");
+          }
+
+          fprintf(fp, "block end %s", current_TAC->v.tac_block_delimiter.name->lexeme);
+          // if (current_TAC->v.tac_block_delimiter.parent_block_name != NULL) {
+          //   fprintf(fp, " (%s)", current_TAC->v.tac_block_delimiter.parent_block_name->lexeme);
+          // }
           fprintf(fp, "\n");
           break;
 
@@ -120,12 +140,12 @@ void generate_tac_file(BASIC_BLOCK* current_BB) {
             else if (operation.src2->type == CONSTANT) { fprintf(fp, "%d", operation.src2->value); }
           }
 
-          if (operation.assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
-            fprintf(fp, " (int variable declaration) ");
-          }
-          else if (operation.assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
-            fprintf(fp, " (closure variable declaration) ");
-          }
+          // if (operation.assignement_type == INT_DECLARATION_ASSIGNEMENT_TYPE) {
+          //   fprintf(fp, " (int variable declaration) ");
+          // }
+          // else if (operation.assignement_type == CLOSURE_DECLARATION_ASSIGNEMENT_TYPE) {
+          //   fprintf(fp, " (closure variable declaration) ");
+          // }
 
           fprintf(fp, "\n");
 

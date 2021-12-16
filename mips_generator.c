@@ -326,7 +326,7 @@ MIPS_INSTR* block_end_MIPS_template(TAC* block_end_TAC) {
 
         // load return address into t0
         MIPS_INSTR* load_return_addr_instr = (MIPS_INSTR*)malloc(sizeof(MIPS_INSTR));
-        sprintf(load_return_addr_instr->instr_str, "  lw $t0 4($t0)");
+        sprintf(load_return_addr_instr->instr_str, "  lw $t0, 4($t0)");
         append_instr(load_return_addr_instr, initial_instr);
 
         // jump to the return address

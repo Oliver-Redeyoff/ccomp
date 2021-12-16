@@ -1,0 +1,11 @@
+int main(void) {
+    int x = 0;
+    x = plusOne(x);
+    
+    print_int(x);
+    return 1;
+}
+
+int plusOne(int x) {
+    return x+1;
+}

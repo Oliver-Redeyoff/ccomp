@@ -1,4 +1,4 @@
-int main(void) {
+int main() {
     function f = cplus(2);
     int x = f(3);
     print_int(x);

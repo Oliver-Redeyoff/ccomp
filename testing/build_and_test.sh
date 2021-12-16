@@ -47,10 +47,12 @@ function run_test {
 }
 
 run_test operations;
+run_test function;
 run_test if_statement;
 run_test while_loop;
 run_test while_loop_continue;
 run_test while_loop_break;
+run_test while_loop_break_continue;
 run_test recursive_factorial;
 run_test returned_function;
 run_test functional_argument;
